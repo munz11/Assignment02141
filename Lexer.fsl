@@ -10,8 +10,8 @@ open Parser
 // We define macros for some regular expressions we will use later
 let digit       = ['0'-'9']
 //let num         = ('+'|'-')? digit+ ( '.' digit+)?  ('E' ('+'|'-')? digit+ )?
-let num         = digit+ ( '.' digit+)?  ('E' ('+'|'-')? digit+ )?
-let xval        = ['a'-'z''A'-'Z']['a'-'z''A'-'Z']*
+let num         = digit+
+let xval        = ['a'-'z''A'-'Z'](['a'-'z''A'-'Z']|'_'| digit)*
 let whitespace  = [' ' '\t']
 let newline     = "\n\r" | '\n' | '\r'
 
@@ -19,11 +19,24 @@ let newline     = "\n\r" | '\n' | '\r'
 // for each of the tokens of our language we need a rule
 rule tokenize = parse
 // deal with tokens that need to be ignored (skip them)
+// this list contains priorities so order is important
+| "if"whitespace          { IF }
+| whitespace"fi"          { FI }
+| "do"whitespace          { DO }
+| whitespace"od"          { OD } 
 | whitespace    { tokenize lexbuf }
+| "skip"        { SKIP }
+| "true"        { WUTT }
+| "false"       { WUTF }
 | newline       { lexbuf.EndPos <- lexbuf.EndPos.NextLine; tokenize lexbuf; }
-// deal with tokens that need to be built
-| num           { NUM(Double.Parse(LexBuffer<_>.LexemeString lexbuf)) }
 | xval          { XVAR((LexBuffer<_>.LexemeString lexbuf)) }
+| ":="          { ASSIGN }
+| "||"          { OR }
+| "->"          { ARROW }
+| "!="          { NEQUAL}
+| "&&"          { AND }
+| "<="          { LESSEREQ }
+| ">="          { GREATEREQ }
 | '*'           { TIMES }
 | '/'           { DIV }
 | '+'           { PLUS }
@@ -35,21 +48,10 @@ rule tokenize = parse
 | ']'           { RSPAR }
 | '&'           { BITAND }
 | '|'           { BITOR }
-| "||"          { OR }
-|'&''&'         { AND}
 | '!'           { NOT }
 | '='           { EQUAL}
-| "!="          { NEQUAL}
 | '>'           { GREATER}
-| ">="          { GREATEREQ }
 | '<'           { LESSER }
-| "<="          { LESSEREQ }
-| "->"          { ARROW }
-| ":="          { ASSIGN }
-| "skip"        { SKIP }
 | ';'           { STATE }
-| "if"          { IF }
-| "fi"          { FI }
-| "do"          { DO }
-| "od"          { OD }
+| num           { NUM(Int32.Parse(LexBuffer<_>.LexemeString lexbuf)) }
 | eof           { EOF }
