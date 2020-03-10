@@ -4,9 +4,9 @@ open TypesAST
 %}
 
 // Declare the tokens (terminal symbols)
-%token <float> NUM
+%token <int> NUM
 %token <string> XVAR
-%token TIMES DIV PLUS MINUS POW LPAR RPAR BITAND BITOR OR AND LSPAR RSPAR NOT EQUAL NEQUAL GREATER GREATEREQ LESSER LESSEREQ ARROW ASSIGN SKIP STATE IF FI DO OD EOF
+%token TIMES DIV PLUS MINUS POW LPAR RPAR BITAND BITOR OR AND LSPAR RSPAR NOT EQUAL NEQUAL WUTT WUTF GREATER GREATEREQ LESSER LESSEREQ ARROW ASSIGN SKIP STATE IF FI DO OD EOF
 // NOTE: the actual formats of these tokens are defined in the lexer file
 //       as regular expressions
 
@@ -55,12 +55,11 @@ expressionA:
   | MINUS expressionA              { UMinusExpr($2) }
   | NUM                           { Num($1) }   
   | XVAR                          { Xval($1) }
-  | LPAR expressionA RPAR          { BracExpr($2) }
+  | LPAR expressionA RPAR          { $2 }
   | XVAR LSPAR expressionA RSPAR   { ArrayExpr($1,$3) }
 
 
 expressionB:
-  | XVAR                          {Wut($1)}
   | expressionB BITAND expressionB {BitAndB($1,$3)}
   | expressionB BITOR expressionB  {BitOrB($1,$3)}
   | expressionB AND expressionB  {LogAndB($1,$3)}
@@ -72,7 +71,9 @@ expressionB:
   | expressionA GREATEREQ expressionA {GEThanB($1,$3)}
   | expressionA LESSER expressionA {LThanB($1,$3)}
   | expressionA LESSEREQ expressionA {LEThanB($1,$3)}
-  | LPAR expressionB RPAR  {BracB($2)}
+  | LPAR expressionB RPAR  { $2 }
+  | WUTT    {WutT}
+  | WUTF    {WutF}
 
 expressionGC:
   | expressionB ARROW expressionC {ARROWGC($1,$3)}
