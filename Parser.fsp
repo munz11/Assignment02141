@@ -87,9 +87,6 @@ expressionC:
   | IF expressionGC FI  {IfStateC($2)}
   | DO expressionGC OD  {DoloopC($2)}
 
-//expressionGC:
- // | expressionB ARROW expressionC {ARROWGC($1,$3)}
- // | expressionGC LSPAR RSPAR expressionGC {StateGC($1,$4)}
 // Again, the code annotation specifies the result of parsing
 // For example { TimesExpr($1,$3) } specifies that parsing with the production
 // returns the value TimesExpr($1,$3), where $i is the result of parsing
