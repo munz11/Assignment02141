@@ -3,7 +3,7 @@
 module TypesAST
 type VarX = string
 type AExp =
-  | Num of float
+  | Num of int
   | TimesExpr of (AExp * AExp)
   | DivExpr of (AExp * AExp)
   | PlusExpr of (AExp * AExp)
@@ -11,7 +11,6 @@ type AExp =
   | PowExpr of (AExp * AExp)
   | UPlusExpr of (AExp)
   | UMinusExpr of (AExp)
-  | BracExpr of (AExp)
   | Xval of (VarX)
   | ArrayExpr of (string * AExp)
 
@@ -28,8 +27,8 @@ type BExp =
 | LThanB of AExp * AExp
 | GEThanB of AExp * AExp
 | LEThanB of AExp * AExp
-| BracB of BExp
-| Wut of string // either true or false
+| WutT  //  true 
+| WutF //  false
 
 
 type CExp =
