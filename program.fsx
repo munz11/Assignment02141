@@ -1,4 +1,4 @@
-// This script implements our interactive calculator
+// This script implements our interactive Parser
 
 // We need to import a couple of modules, including the generated lexer and parser
 #r "../../FsLexYacc.Runtime.7.0.6/lib/portable-net45+netcore45+wpa81+wp8+MonoAndroid10+MonoTouch10/FsLexYacc.Runtime.dll"
@@ -13,7 +13,7 @@ open Parser
 open Lexer
 
 // We define the evaluation function recursively, by induction on the structure
-// of arithmetic expressions (AST of type expr)
+// of arithmetic expressions (AST of type CExp)
 // We parse the input
 let parse input =
     // translate string into a buffer of characters
