@@ -1,4 +1,4 @@
-// This script implements our interactive Parser
+// This script implements our interactive calculator
 
 // We need to import a couple of modules, including the generated lexer and parser
 #r "../../FsLexYacc.Runtime.7.0.6/lib/portable-net45+netcore45+wpa81+wp8+MonoAndroid10+MonoTouch10/FsLexYacc.Runtime.dll"
@@ -11,9 +11,55 @@ open TypesAST
 open Parser
 #load "Lexer.fs"
 open Lexer
-
 // We define the evaluation function recursively, by induction on the structure
-// of arithmetic expressions (AST of type CExp)
+// of arithmetic expressions (AST of type expr)
+let rec EvalA e = 
+    match e with
+    | Num(e1) -> string e1
+    | Xval(e1) -> e1 
+    | UPlusExpr(e1) -> EvalA(e1)
+    | PlusExpr(e1, e2) -> EvalA e1 + "+" + EvalA e2
+    | MinusExpr(e1, e2) -> EvalA e1 + "-" + EvalA e2
+    | PowExpr(e1, e2) -> EvalA e1 + "^" + EvalA e2
+    | TimesExpr(e1, e2) -> EvalA e1+ "*" + EvalA e2
+    | UMinusExpr(e1) -> "-" + EvalA e1
+    | ArrayExpr(e1, e2) -> e1 + "[" + EvalA e2 + "]"
+    | DivExpr(e1,e2) -> EvalA e1 + "/" + EvalA e2
+
+let rec evalB e =
+    match e with
+    | BitAndB(e1, e2) -> evalB e1 + "&" + evalB e2
+    | BitOrB(e1, e2) -> evalB e1 + "|" + evalB e2
+    | LogAndB(e1, e2) -> evalB e1 + "&&" + evalB(e2)
+    | LogOrB(e1, e2) -> evalB(e1) "||" evalB(e2);
+    | LogNotB(e1) -> !evalB(e1);
+    | BEqual(e1, e2) -> evalA(e1) "=" evalA(e2);
+    | NotEqualB(e1, e2) -> evalA(e1) "!=" evalA(e2);
+    | GThanB(e1, e2) -> evalA(e1) ">" evalA(e2);
+    | LThanB(e1, e2) -> evalA(e1) "<" evalA(e2);
+    | GEThanB(e1, e2) -> evalA(e1) ">=" evalA(e2);
+    | LEThanB(e1, e2) -> evalA(e1) "<=" evalA(e2);
+    | WutT -> WutT;
+    | WutF -> WutF;
+
+let rec edgesC (counter: int) (e: CExp) =
+  match e with
+  |AssignC (e1,e2) -> [(counter, e1 + ":=" + EvalA(e2), counter+1)]
+  |AssignArrayC (e1,e2,e3) -> [(counter, e1 + "[" + EvalA(e2) "]" + ":=" + EvalA(e3),counter+1)]
+  |SkipC -> [(counter, "Skip" , counter+1)]
+  |StateC (e1, e2) -> let xlist = edgesC (counter) e1
+                      let rec statC (e1) = match e1 with 
+                                           |(c,st,c2)::[] -> edgesC (c2) e2
+                                           |head::tail -> statC tail  
+                                           |[] -> edgesC (counter+1) e2
+                      xlist@(statC (xlist)) 
+  |IfStateC (gc1) -> edgesGC (counter) gc1
+  |DoloopC (gc1) -> edgesGC (counter) gc1
+and edgesGC (counter:int) (e: GCExp) =
+    match e with
+    |ARROWGC (b1,c1) -> (counter, evalB(b1), counter+1) :: edgesC (counter+1) c1
+    |StateGC (g1,g2) -> edgesGC (counter) g1 @ edgesGC (counter) g2
+
 // We parse the input
 let parse input =
     // translate string into a buffer of characters
@@ -28,19 +74,13 @@ let parse input =
 
 
 let strings = [|
-        ("a:=10","NUM 10")
-        ("b:=3+4", "PlusExpr (Num 3, Num 4)")
-        ("skip","ff")
-        ("c[4]:=4", "hof")    //  doesn't work
-        ("if 4 != 3 -> skip fi", "fhf")     //doesn't work
-        
-        ("x:=3; y:=1; do x>0 -> y:=x*y; x:=x-1 od", "fj")
+    ("a:=10","AssignC(a,NUM 10)")
         |]
         
 Array.map 
         (fun (toParse,expectedResult) -> 
             let actualResult = ((parse(toParse)))
-            printfn "parsing %s gives the result:  %A  expected %A" toParse actualResult expectedResult 
+            printfn "parsing %s gives the result:  %A  expected %A" toParse actualResult (edgesC 0 actualResult)
         )
         strings
 
