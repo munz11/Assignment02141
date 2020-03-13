@@ -1,5 +1,4 @@
 // This script implements our interactive calculator
-
 // We need to import a couple of modules, including the generated lexer and parser
 #r "../../FsLexYacc.Runtime.7.0.6/lib/portable-net45+netcore45+wpa81+wp8+MonoAndroid10+MonoTouch10/FsLexYacc.Runtime.dll"
 open Microsoft.FSharp.Text.Lexing
@@ -30,22 +29,22 @@ let rec evalB e =
     match e with
     | BitAndB(e1, e2) -> evalB e1 + "&" + evalB e2
     | BitOrB(e1, e2) -> evalB e1 + "|" + evalB e2
-    | LogAndB(e1, e2) -> evalB e1 + "&&" + evalB(e2)
-    | LogOrB(e1, e2) -> evalB(e1) "||" evalB(e2);
-    | LogNotB(e1) -> !evalB(e1);
-    | BEqual(e1, e2) -> evalA(e1) "=" evalA(e2);
-    | NotEqualB(e1, e2) -> evalA(e1) "!=" evalA(e2);
-    | GThanB(e1, e2) -> evalA(e1) ">" evalA(e2);
-    | LThanB(e1, e2) -> evalA(e1) "<" evalA(e2);
-    | GEThanB(e1, e2) -> evalA(e1) ">=" evalA(e2);
-    | LEThanB(e1, e2) -> evalA(e1) "<=" evalA(e2);
-    | WutT -> WutT;
-    | WutF -> WutF;
+    | LogAndB(e1, e2) -> evalB e1 + "&&" + evalB e2
+    | LogOrB(e1, e2) -> evalB e1 + "||" + evalB e2
+    | LogNotB(e1) -> "!" + evalB e1
+    | BEqual(e1, e2) -> EvalA e1 + "=" + EvalA e2
+    | NotEqualB(e1, e2) -> EvalA e1 + "!=" + EvalA e2
+    | GThanB(e1, e2) -> EvalA e1 + ">" + EvalA e2
+    | LThanB(e1, e2) -> EvalA e1 + "<" + EvalA e2
+    | GEThanB(e1, e2) -> EvalA e1 + ">=" + EvalA e2
+    | LEThanB(e1, e2) -> EvalA e1 + "<=" + EvalA e2
+    | WutT -> "true"
+    | WutF -> "false"
 
 let rec edgesC (counter: int) (e: CExp) =
   match e with
   |AssignC (e1,e2) -> [(counter, e1 + ":=" + EvalA(e2), counter+1)]
-  |AssignArrayC (e1,e2,e3) -> [(counter, e1 + "[" + EvalA(e2) "]" + ":=" + EvalA(e3),counter+1)]
+  |AssignArrayC (e1,e2,e3) -> [(counter, e1 + "[" + EvalA e2 + "]" + ":=" + EvalA e3, counter+1)]
   |SkipC -> [(counter, "Skip" , counter+1)]
   |StateC (e1, e2) -> let xlist = edgesC (counter) e1
                       let rec statC (e1) = match e1 with 
