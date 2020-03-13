@@ -74,6 +74,9 @@ let parse input =
 
 let strings = [|
     ("a:=10","AssignC(a,NUM 10)")
+    //these two are straight from the fm4fun website
+    ("y:=1; do x>0 -> y:=x*y; x:=x-1 od", "factorial function")
+    ("i:=0; j:=0; do (i<n)&((j=m)|(i<j)) -> A[i]:=A[i]+27; i:=i+1 [] (j<m)&((i=n)|(!(i<j))) -> B[j]:=B[j]+12; j:=j+1 od", "database")
         |]
         
 Array.map 
