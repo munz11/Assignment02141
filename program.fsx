@@ -41,6 +41,11 @@ let rec evalB e =
     | WutT -> "true"
     | WutF -> "false"
 
+let rec doneGC e =
+    match e with
+    |ARROWGC (b1,c1) -> "!" + evalB (b1)
+    |StateGC (g1,g2) -> doneGC (g1) + "$$" + doneGC (g2)
+
 let rec edgesC (counter: int) (e: CExp) =
   match e with
   |AssignC (e1,e2) -> [(counter, e1 + ":=" + EvalA(e2), counter+1)]
@@ -53,7 +58,8 @@ let rec edgesC (counter: int) (e: CExp) =
                                            |[] -> edgesC (counter+1) e2
                       xlist@(statC (xlist)) 
   |IfStateC (gc1) -> edgesGC (counter) gc1
-  |DoloopC (gc1) -> edgesGC (counter) gc1
+  |DoloopC (gc1) -> let b = doneGC gc1
+                    edgesGC (counter) gc1 @ [(counter, b , counter+1)]
 and edgesGC (counter:int) (e: GCExp) =
     match e with
     |ARROWGC (b1,c1) -> (counter, evalB(b1), counter+1) :: edgesC (counter+1) c1
@@ -82,7 +88,7 @@ let strings = [|
 Array.map 
         (fun (toParse,expectedResult) -> 
             let actualResult = ((parse(toParse)))
-            printfn "parsing %s gives the result:  %A  expected %A" toParse actualResult (edgesC 0 actualResult)
+            printfn "parsing %s gives the result:  %A" toParse (edgesC 0 actualResult)
         )
         strings
 
