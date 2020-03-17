@@ -40,30 +40,72 @@ let rec evalB e =
     | LEThanB(e1, e2) -> EvalA e1 + "<=" + EvalA e2
     | WutT -> "true"
     | WutF -> "false"
+let rec subfunc (used)=
+    match used with
+    |[] -> 0
+    |x::[] ->x
+    |x::xs ->subfunc(xs)
+
+let booltostring (d)=
+    if (d)
+    then "true"
+    else "false"
+    
+let rec NondoneGC e =
+    match e with
+    |ARROWGC (b1,c1) -> "!" + evalB (b1)
+    |StateGC (g1,g2) -> NondoneGC (g1) + "$$" + NondoneGC (g2)
+
+let rec NonedgesC (qo: int) (e: CExp) (qe: int) (used) = //initially qe=1, qo=0, used= [0,1]
+  match e with
+  |AssignC (e1,e2) -> ([(qo, e1 + ":=" + EvalA(e2), qe)],used)
+  |AssignArrayC (e1,e2,e3) -> ([(qo, e1 + "[" + EvalA e2 + "]" + ":=" + EvalA e3, qe)],used)
+  |SkipC -> ([(qo, "Skip" , qe)],used)
+  |StateC (e1, e2) -> let lastq = subfunc(used)
+                      let (e1list,used1) = NonedgesC (qo) (e1) (lastq+1) (used@[lastq+1]) 
+                      let (e2list,used2) = NonedgesC (lastq+1) (e2) (qe) (used1)
+                      (e1list@e2list,used2) 
+  |IfStateC (gc1) -> NonedgesGC (qo) gc1 (qe) (used)
+  |DoloopC (gc1) -> let b = NondoneGC (gc1)
+                    let (gclist,used1) = NonedgesGC(qo)(gc1)(qo)(used)
+                    (gclist@[(qo,b,qe)],used1)
+and NonedgesGC (qo:int) (e: GCExp) (qe: int) (used)=
+    match e with
+    |ARROWGC (b1,c1) -> let lastq = subfunc(used)
+                        let (clist,used2) = NonedgesC (lastq+1) (c1) (qe) (used@[(lastq+1)])
+                        ([(qo, evalB(b1),lastq+1)]@clist,used2)
+    |StateGC (g1,g2) -> let (g1list,used1)= NonedgesGC (qo) (g1) (qe) (used)
+                        let (g2list,used2)= NonedgesGC (qo) (g2) (qe) (used1)
+                        (g1list@g2list,used2)
 
 let rec doneGC e =
     match e with
     |ARROWGC (b1,c1) -> "!" + evalB (b1)
     |StateGC (g1,g2) -> doneGC (g1) + "$$" + doneGC (g2)
 
-let rec edgesC (counter: int) (e: CExp) =
+let rec edgesC (qo: int) (e: CExp) (qe: int) (used) = //initially qe=1, qo=0, used= [0,1]
   match e with
-  |AssignC (e1,e2) -> [(counter, e1 + ":=" + EvalA(e2), counter+1)]
-  |AssignArrayC (e1,e2,e3) -> [(counter, e1 + "[" + EvalA e2 + "]" + ":=" + EvalA e3, counter+1)]
-  |SkipC -> [(counter, "Skip" , counter+1)]
-  |StateC (e1, e2) -> let xlist = edgesC (counter) e1
-                      let rec statC (e1) = match e1 with 
-                                           |(c,st,c2)::[] -> edgesC (c2) e2
-                                           |head::tail -> statC tail  
-                                           |[] -> edgesC (counter+1) e2
-                      xlist@(statC (xlist)) 
-  |IfStateC (gc1) -> edgesGC (counter) gc1
-  |DoloopC (gc1) -> let b = doneGC gc1
-                    edgesGC (counter) gc1 @ [(counter, b , counter+1)]
-and edgesGC (counter:int) (e: GCExp) =
+  |AssignC (e1,e2) -> ([(qo, e1 + ":=" + EvalA(e2), qe)],used)
+  |AssignArrayC (e1,e2,e3) -> ([(qo, e1 + "[" + EvalA e2 + "]" + ":=" + EvalA e3, qe)],used)
+  |SkipC -> ([(qo, "Skip" , qe)],used)
+  |StateC (e1, e2) -> let lastq = subfunc(used)
+                      let (e1list,used1) = edgesC (qo) (e1) (lastq+1) (used@[lastq+1]) 
+                      let (e2list,used2) = edgesC (lastq+1) (e2) (qe) (used1)
+                      (e1list@e2list,used2) 
+  |IfStateC (gc1) ->let (E,used1,d) = edgesGC (qo) gc1 (qe) (used) (false)
+                    (E,used1)
+  |DoloopC (gc1) -> let (E,used1,d) = edgesGC (qo) gc1 (qo) (used) (false)
+                    (E@[(qo, "!" + booltostring(d), qe)],used1)
+and edgesGC (qo:int) (e: GCExp) (qe: int) (used) (d)=
     match e with
-    |ARROWGC (b1,c1) -> (counter, evalB(b1), counter+1) :: edgesC (counter+1) c1
-    |StateGC (g1,g2) -> edgesGC (counter) g1 @ edgesGC (counter) g2
+    |ARROWGC (b1,c1) -> let lastq = subfunc(used)
+                        let (clist,used1) = edgesC (lastq+1) (c1) (qe) (used@[lastq+1])
+                        ([qo,evalB(b1) + "&&" + "!" + booltostring(d),lastq+1]@clist,used1,d)
+    |StateGC (g1,g2) -> let (gclist1,used1,d1) = edgesGC (qo) (g1) (qe) (used) (d)
+                        let (gclist2,used2,d2) = edgesGC (qo) (g2) (qe) (used1) (d1)
+                        (gclist1@gclist2,used2,d2)
+
+
 
 // We parse the input
 let parse input =
@@ -77,18 +119,25 @@ let parse input =
 // The response from the requests made on this website
 // will contain system output from e.g. printfn
 
+//Set the following boolean constant to true if you want the deterministic Program Graph
+
+let deterministic = true
 
 let strings = [|
-    ("a:=10","AssignC(a,NUM 10)")
+  //  ("a:=10","AssignC(a,NUM 10)")
     //these two are straight from the fm4fun website
     ("y:=1; do x>0 -> y:=x*y; x:=x-1 od", "factorial function")
-    ("i:=0; j:=0; do (i<n)&((j=m)|(i<j)) -> A[i]:=A[i]+27; i:=i+1 [] (j<m)&((i=n)|(!(i<j))) -> B[j]:=B[j]+12; j:=j+1 od", "database")
+   // ("i:=0; j:=0; do (i<n)&((j=m)|(i<j)) -> A[i]:=A[i]+27; i:=i+1 [] (j<m)&((i=n)|(!(i<j))) -> B[j]:=B[j]+12; j:=j+1 od", "database")
         |]
         
 Array.map 
         (fun (toParse,expectedResult) -> 
             let actualResult = ((parse(toParse)))
-            printfn "parsing %s gives the result:  %A" toParse (edgesC 0 actualResult)
+            if (deterministic) 
+            then let (edgeslist,used) = (edgesC (0) (actualResult) (1) ([0;1]))
+                 printfn "evaluating the AST %A gives the result:  %A" actualResult (edgeslist)
+            else let (edgeslist,used) = (NonedgesC (0) (actualResult) (1) ([0;1]))
+                 printfn "evaluating the AST %A gives the result:  %A" actualResult (edgeslist)
         )
         strings
 
