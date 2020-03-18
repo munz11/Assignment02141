@@ -41,34 +41,34 @@ let rec evalB e =
     | WutT -> "true"
     | WutF -> "false"
 
-let rec calB e =
-    match e with
-    | BitAndB(e1, e2) -> calB e1 &calB e2
-    | BitOrB(e1, e2) -> calB e1 | calB e2
-    | LogAndB(e1, e2) -> evalB e1 + "&&" + evalB e2
-    | LogOrB(e1, e2) -> evalB e1 + "||" + evalB e2
-    | LogNotB(e1) -> "!" + evalB e1
-    | BEqual(e1, e2) -> EvalA e1 + "=" + EvalA e2
-    | NotEqualB(e1, e2) -> EvalA e1 + "!=" + EvalA e2
-    | GThanB(e1, e2) -> EvalA e1 + ">" + EvalA e2
-    | LThanB(e1, e2) -> EvalA e1 + "<" + EvalA e2
-    | GEThanB(e1, e2) -> EvalA e1 + ">=" + EvalA e2
-    | LEThanB(e1, e2) -> EvalA e1 + "<=" + EvalA e2
-    | WutT -> true
-    | WutF -> false
+//let rec calB e =
+//    match e with
+//    | BitAndB(e1, e2) -> calB e1 &calB e2
+//    | BitOrB(e1, e2) -> calB e1 | calB e2
+//    | LogAndB(e1, e2) -> evalB e1 + "&&" + evalB e2
+//    | LogOrB(e1, e2) -> evalB e1 + "||" + evalB e2
+//    | LogNotB(e1) -> "!" + evalB e1
+//    | BEqual(e1, e2) -> EvalA e1 + "=" + EvalA e2
+//    | NotEqualB(e1, e2) -> EvalA e1 + "!=" + EvalA e2
+//    | GThanB(e1, e2) -> EvalA e1 + ">" + EvalA e2
+//    | LThanB(e1, e2) -> EvalA e1 + "<" + EvalA e2
+//    | GEThanB(e1, e2) -> EvalA e1 + ">=" + EvalA e2
+//    | LEThanB(e1, e2) -> EvalA e1 + "<=" + EvalA e2
+//    | WutT -> true
+//    | WutF -> false
 
-let rec calA e = 
-    match e with
-    | Num(e1) -> string e1
-    | Xval(e1) -> 0
-    | UPlusExpr(e1) -> EvalA(e1)
-    | PlusExpr(e1, e2) -> EvalA e1 + "+" + EvalA e2
-    | MinusExpr(e1, e2) -> EvalA e1 + "-" + EvalA e2
-    | PowExpr(e1, e2) -> EvalA e1 + "^" + EvalA e2
-    | TimesExpr(e1, e2) -> EvalA e1+ "*" + EvalA e2
-    | UMinusExpr(e1) -> "-" + EvalA e1
-    | ArrayExpr(e1, e2) -> calA e2
-    | DivExpr(e1,e2) -> EvalA e1 + "/" + EvalA e2
+//let rec calA e = 
+//    match e with
+//    | Num(e1) -> string e1
+//    | Xval(e1) -> 0
+//    | UPlusExpr(e1) -> EvalA(e1)
+//    | PlusExpr(e1, e2) -> EvalA e1 + "+" + EvalA e2
+//    | MinusExpr(e1, e2) -> EvalA e1 + "-" + EvalA e2
+//    | PowExpr(e1, e2) -> EvalA e1 + "^" + EvalA e2
+//    | TimesExpr(e1, e2) -> EvalA e1+ "*" + EvalA e2
+//    | UMinusExpr(e1) -> "-" + EvalA e1
+//    | ArrayExpr(e1, e2) -> calA e2
+//    | DivExpr(e1,e2) -> EvalA e1 + "/" + EvalA e2
 
 
 let rec subfunc (used)=
