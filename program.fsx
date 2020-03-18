@@ -41,11 +41,40 @@ let rec evalB e =
     | WutT -> "true"
     | WutF -> "false"
 
+let rec calB e =
+    match e with
+    | BitAndB(e1, e2) -> calB e1 &calB e2
+    | BitOrB(e1, e2) -> calB e1 | calB e2
+    | LogAndB(e1, e2) -> evalB e1 + "&&" + evalB e2
+    | LogOrB(e1, e2) -> evalB e1 + "||" + evalB e2
+    | LogNotB(e1) -> "!" + evalB e1
+    | BEqual(e1, e2) -> EvalA e1 + "=" + EvalA e2
+    | NotEqualB(e1, e2) -> EvalA e1 + "!=" + EvalA e2
+    | GThanB(e1, e2) -> EvalA e1 + ">" + EvalA e2
+    | LThanB(e1, e2) -> EvalA e1 + "<" + EvalA e2
+    | GEThanB(e1, e2) -> EvalA e1 + ">=" + EvalA e2
+    | LEThanB(e1, e2) -> EvalA e1 + "<=" + EvalA e2
+    | WutT -> true
+    | WutF -> false
+
+let rec calA e = 
+    match e with
+    | Num(e1) -> string e1
+    | Xval(e1) -> 0
+    | UPlusExpr(e1) -> EvalA(e1)
+    | PlusExpr(e1, e2) -> EvalA e1 + "+" + EvalA e2
+    | MinusExpr(e1, e2) -> EvalA e1 + "-" + EvalA e2
+    | PowExpr(e1, e2) -> EvalA e1 + "^" + EvalA e2
+    | TimesExpr(e1, e2) -> EvalA e1+ "*" + EvalA e2
+    | UMinusExpr(e1) -> "-" + EvalA e1
+    | ArrayExpr(e1, e2) -> calA e2
+    | DivExpr(e1,e2) -> EvalA e1 + "/" + EvalA e2
+
 
 let rec subfunc (used)=
     match used with
-    |[] -> 0
-    |x::[] ->x
+    |[] -> 0 //never the case 
+    |x::[] ->x // last node in the used 
     |x::xs ->subfunc(xs)
 
 let booltostring (d)=
@@ -98,12 +127,12 @@ let rec edgesC (qo: int) (e: CExp) (qe: int) (used) = //initially qe=1, qo=0, us
                     (E,used1)
   |DoloopC (gc1) -> let (E,used1,d) = edgesGC (qo) gc1 (qo) (used) (false)
                     (E@[(qo, "!" + booltostring(d), qe)],used1)
-and edgesGC (qo:int) (e: GCExp) (qe: int) (used) (d)=
+and edgesGC (qo:int) (e: GCExp) (qe: int) (used) (d)= // d is bool 
     match e with
     |ARROWGC (b1,c1) -> let lastq = subfunc(used)
                         let (clist,used1) = edgesC (lastq+1) (c1) (qe) (used@[lastq+1])
                         ([qo,evalB(b1) + "&&" + "!" + booltostring(d),lastq+1]@clist,used1, d)// this should be b|d but for that need to B to be boolean and too lazy to do that
-    |StateGC (g1,g2) -> let (gclist1,used1,d1) = edgesGC (qo) (g1) (qe) (used) (d)
+    |StateGC (g1,g2) -> let (gclist1,used1,d1) = edgesGC (qo) (g1) (qe) (used) (d)              
                         let (gclist2,used2,d2) = edgesGC (qo) (g2) (qe) (used1) (d1)
                         (gclist1@gclist2,used2,d2)
 
@@ -126,10 +155,10 @@ let parse input =
 let deterministic = true
 
 let strings = [|
-  //  ("a:=10","AssignC(a,NUM 10)")
+    ("a:=10","AssignC(a,NUM 10)")
     //these two are straight from the fm4fun website
     ("y:=1; do x>0 -> y:=x*y; x:=x-1 od", "factorial function")
-   // ("i:=0; j:=0; do (i<n)&((j=m)|(i<j)) -> A[i]:=A[i]+27; i:=i+1 [] (j<m)&((i=n)|(!(i<j))) -> B[j]:=B[j]+12; j:=j+1 od", "database")
+    ("i:=0; j:=0; do (i<n)&((j=m)|(i<j)) -> A[i]:=A[i]+27; i:=i+1 [] (j<m)&((i=n)|(!(i<j))) -> B[j]:=B[j]+12; j:=j+1 od", "database")
         |]
      
 let rec listtograph (edgeslist) =
