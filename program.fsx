@@ -40,6 +40,8 @@ let rec evalB e =
     | LEThanB(e1, e2) -> EvalA e1 + "<=" + EvalA e2
     | WutT -> "true"
     | WutF -> "false"
+
+
 let rec subfunc (used)=
     match used with
     |[] -> 0
@@ -100,7 +102,7 @@ and edgesGC (qo:int) (e: GCExp) (qe: int) (used) (d)=
     match e with
     |ARROWGC (b1,c1) -> let lastq = subfunc(used)
                         let (clist,used1) = edgesC (lastq+1) (c1) (qe) (used@[lastq+1])
-                        ([qo,evalB(b1) + "&&" + "!" + booltostring(d),lastq+1]@clist,used1,d)
+                        ([qo,evalB(b1) + "&&" + "!" + booltostring(d),lastq+1]@clist,used1, d)// this should be b|d but for that need to B to be boolean and too lazy to do that
     |StateGC (g1,g2) -> let (gclist1,used1,d1) = edgesGC (qo) (g1) (qe) (used) (d)
                         let (gclist2,used2,d2) = edgesGC (qo) (g2) (qe) (used1) (d1)
                         (gclist1@gclist2,used2,d2)
@@ -129,13 +131,21 @@ let strings = [|
     ("y:=1; do x>0 -> y:=x*y; x:=x-1 od", "factorial function")
    // ("i:=0; j:=0; do (i<n)&((j=m)|(i<j)) -> A[i]:=A[i]+27; i:=i+1 [] (j<m)&((i=n)|(!(i<j))) -> B[j]:=B[j]+12; j:=j+1 od", "database")
         |]
+     
+let rec listtograph (edgeslist) =
+    match edgeslist with
+    |[] -> "digraph program_graph {\n node [shape = circle]; q0; \n node [shape = doublecircle]; q1; \n node [shape = circle]"
+    |x::xs->let (qo,label,qe) = x 
+            listtograph(xs) + "\n" + "q" + string qo + "->" + "q" + string qe + "[label = \"" + label + "\"" + "];"
         
 Array.map 
         (fun (toParse,expectedResult) -> 
             let actualResult = ((parse(toParse)))
             if (deterministic) 
             then let (edgeslist,used) = (edgesC (0) (actualResult) (1) ([0;1]))
-                 printfn "evaluating the AST %A gives the result:  %A" actualResult (edgeslist)
+                 printfn "evaluating the AST %A gives the result:  %A \n %s \n }" actualResult (edgeslist) (listtograph (edgeslist))
+                 // when printing out the graphviz, the text includes \ which needs to be removed...
+                 
             else let (edgeslist,used) = (NonedgesC (0) (actualResult) (1) ([0;1]))
                  printfn "evaluating the AST %A gives the result:  %A" actualResult (edgeslist)
         )
