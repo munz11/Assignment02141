@@ -17,25 +17,85 @@ let rec Pow (e1) (e2) =
     match e2 with
     |1 -> e1
     |x -> Pow (e1*e1) (e2-1)
-    
+let rec evalA e =
+    match e with
+    | Num(e1) -> e1
+    | Xval(e1) -> 0
+    | UPlusExpr(e1) -> evalA (e1) 
+    | PlusExpr(e1, e2) -> evalA e1 + evalA e2
+    | MinusExpr(e1, e2) -> evalA e1 - evalA e2
+    | PowExpr(e1, e2) -> Pow (evalA e1) (evalA e2)
+    | TimesExpr(e1, e2) -> evalA e1 * evalA e2
+    | UMinusExpr(e1) ->  - evalA e1
+    | ArrayExpr(e1, e2) -> evalA e2
+    | DivExpr(e1,e2) ->   evalA e1 /evalA e2
+
+
+let rec evalB e =
+    match e with
+    | BitAndB(e1, e2) -> let lhs = evalB(e1) 
+                         let rhs = evalB(e2) 
+                         lhs && rhs
+    | BitOrB(e1, e2) ->let lhs = evalB(e1) 
+                       let rhs = evalB(e2) 
+                       lhs || rhs
+    | LogAndB(e1, e2) -> evalB e1 && evalB e2 
+    | LogOrB(e1, e2) -> evalB e1 || evalB e2
+    | LogNotB(e1) ->  not (evalB e1)
+    | BEqual(e1, e2) ->  evalA e1 = evalA e2
+    | NotEqualB(e1, e2) ->evalA e1 <> evalA e2
+    | GThanB(e1, e2) ->  evalA e1 > evalA e2
+    | LThanB(e1, e2) ->   evalA e1 < evalA e2
+    | GEThanB(e1, e2) ->  evalA e1 >= evalA e2
+    | LEThanB(e1, e2) ->  evalA e1 <= evalA e2
+    | WutT -> true
+    | WutF -> false
     
 let rec calA e mem =
     match e with
     | Num(e1) ->  Some e1
-    | Xval(e1) -> let value = Map.tryFind e1 mem
-                  value
+    | Xval(e1) -> Map.tryFind e1 mem
     | UPlusExpr(e1) -> calA (e1) (mem)
-    | PlusExpr(e1, e2) -> (calA e1 mem) + (calA e2 mem)
-    | MinusExpr(e1, e2) -> (calA e1 mem) - (calA e2 mem)
-    | PowExpr(e1, e2) -> Pow (calA e1 mem) ( calA e2 mem)
-    | TimesExpr(e1, e2) -> (calA e1 mem) * ( calA e2 mem)
-    | UMinusExpr(e1) -> - calA e1 mem
-    | ArrayExpr(e1, e2) ->let value = calA e2 mem
-                          let value2 = Map.tryFind e1[value] 
-                           match value2 with
-                           |Some b -> Some b [value2] // need to check if the value2 is within the bounds of the array b, then return the value stored at b [value] 
-                           |None -> None // so if e1[value] is not a part of the mem then return 0
-    | DivExpr(e1,e2) -> (calA e1 mem) / ( calA e2 mem)
+    | PlusExpr(e1, e2) -> let value1 = (calA e1 mem) 
+                          let value2 = (calA e2 mem)
+                          match value1 with 
+                          | Some a -> match value2 with 
+                                      |Some a2 -> Some (a + a2)
+                                      |None ->None
+                          |None ->None
+    | MinusExpr(e1, e2) -> let value1 = (calA e1 mem) 
+                           let value2 = (calA e2 mem)
+                           match value1 with 
+                           | Some a -> match value2 with 
+                                       |Some a2 -> Some(a - a2)
+                                       |None ->None
+                           |None ->None
+    | PowExpr(e1, e2) ->  let value1 = (calA e1 mem) 
+                          let value2 = (calA e2 mem)
+                          match value1 with 
+                          | Some a -> match value2 with 
+                                      |Some a2 ->Some (Pow (a) (a2))
+                                      |None ->None
+                          |None ->None
+    | TimesExpr(e1, e2) -> let value1 = (calA e1 mem) 
+                           let value2 = (calA e2 mem)
+                           match value1 with 
+                           | Some a -> match value2 with 
+                                       |Some a2 ->Some( a * a2)
+                                       |None ->None
+                           |None ->None
+    | UMinusExpr(e1) ->   let value1 = (calA e1 mem) 
+                          match value1 with 
+                          | Some a -> Some (- a)
+                          |None ->None
+    | ArrayExpr(e1, e2) -> Some 3  // just for testing... need to be fixed such that we return the value stored at the memory location e1[e2] 
+    | DivExpr(e1,e2) ->   let value1 = (calA e1 mem) 
+                          let value2 = (calA e2 mem)
+                          match value1 with 
+                          | Some a -> match value2 with 
+                                      |Some a2 -> Some (a / a2)
+                                      |None ->None
+                          |None ->None
 
 
 let rec calB e mem =
@@ -49,30 +109,75 @@ let rec calB e mem =
     | LogAndB(e1, e2) -> calB e1 mem && calB e2 mem
     | LogOrB(e1, e2) -> calB e1 mem || calB e2 mem
     | LogNotB(e1) ->  not (calB e1 mem)
-    | BEqual(e1, e2) -> calA e1 mem = calA e2 mem
-    | NotEqualB(e1, e2) -> calA e1 mem <> calA e2 mem
-    | GThanB(e1, e2) -> calA e1 mem > calA e2 mem
-    | LThanB(e1, e2) -> calA e1 mem < calA e2 mem
-    | GEThanB(e1, e2) -> calA e1 mem >= calA e2 mem
-    | LEThanB(e1, e2) -> calA e1 mem <= calA e2 mem
+    | BEqual(e1, e2) ->  let value1 = calA e1 mem 
+                         let value2 = calA e2 mem
+                         match value1 with 
+                         |Some b1 -> match value2 with 
+                                     | Some b2 -> b1=b2
+                                     | None -> false
+                         |None -> false
+    | NotEqualB(e1, e2) -> let value1 = calA e1 mem 
+                           let value2 = calA e2 mem
+                           match value1 with 
+                           |Some b1 -> match value2 with 
+                                       | Some b2 -> b1<>b2
+                                       | None -> false
+                           |None -> false
+    | GThanB(e1, e2) ->  let value1 = calA e1 mem 
+                         let value2 = calA e2 mem
+                         match value1 with 
+                         |Some b1 -> match value2 with 
+                                     | Some b2 -> b1>b2
+                                     | None -> false
+                         |None -> false
+    | LThanB(e1, e2) ->  let value1 = calA e1 mem 
+                         let value2 = calA e2 mem
+                         match value1 with 
+                         |Some b1 -> match value2 with 
+                                     | Some b2 -> b1<b2
+                                     | None -> false
+                         |None -> false
+    | GEThanB(e1, e2) -> let value1 = calA e1 mem 
+                         let value2 = calA e2 mem
+                         match value1 with 
+                         |Some b1 -> match value2 with 
+                                     | Some b2 -> b1>=b2
+                                     | None -> false
+                         |None -> false
+    | LEThanB(e1, e2) -> let value1 = calA e1 mem 
+                         let value2 = calA e2 mem
+                         match value1 with 
+                         |Some b1 -> match value2 with 
+                                     | Some b2 -> b1<=b2
+                                     | None -> false
+                         |None -> false
     | WutT -> true
     | WutF -> false
 
 let rec calLabel e mem =
   match e with 
-  |MemUpdate (AssignC (e1,e2)) // need to check if the calA is some or non if non then return non or else return some mem' where mem' is the updated memory.
+  |MemUpdate ( (e1,e2)) -> let value = calA e2 mem
+                           match value with 
+                           |Some a -> match (Map.tryFind e1 mem) with
+                                      |Some x ->  Some (Map.add e1 a mem)
+                                      |None -> None
+                           |None -> None
   |SkipPG -> Some mem
-  |CheckBol(b)-> // b is of type BExp, check if it is true, is so then return some mem or else return none
-  |MemUpdateArray (AssignArrayC (e1,e2,e3)) ->   // need to check if the calA is some or non if non then return non or else return some mem' where mem' is the updated memory
+  |CheckBol(b)-> if (calB b mem)
+                 then Some mem
+                 else None
+  |MemUpdateArray ( (e1,e2,e3)) ->  Some mem // need to figure out how to access memories for arrays 
 
 
 // We need a function which takes the edges and recursively runs the calLabel on each label until the list is empty
 
 let rec interpreter e mem = // mem needs to be defined when calling the interpreter
   match e with
-  |[] -> mem
+  |[] -> Some mem
   |(qo,label,qe)::xs -> let mem2 = calLabel label mem
-                        interpreter xs mem2
+                        match mem2 with 
+                        |Some a -> interpreter xs a
+                        | None ->None
 
 
 
@@ -97,8 +202,8 @@ let matchdtob d =
     
 let rec edgesC (qo: int) (e: CExp) (qe: int) (used) = //initially qe=1, qo=0, used= [0,1]
   match e with
-  |AssignC (e1,e2) -> ([(qo, MemUpdate(AssignC(e1,e2)), qe)],used)
-  |AssignArrayC (e1,e2,e3) -> ([(qo, MemUpdateArray(AssignArrayC (e1,e2,e3)), qe)],used)
+  |AssignC (e1,e2) -> ([(qo, MemUpdate((e1,e2)), qe)],used)
+  |AssignArrayC (e1,e2,e3) -> ([(qo, MemUpdateArray((e1,e2,e3)), qe)],used)
   |SkipC -> ([(qo, SkipPG , qe)],used)
   |StateC (e1, e2) -> let lastq = subfunc(used)
                       let (e1list,used1) = edgesC (qo) (e1) (lastq+1) (used@[lastq+1]) 
@@ -112,7 +217,7 @@ and edgesGC (qo:int) (e: GCExp) (qe: int) (used) (d)= // d is bool
     match e with
     |ARROWGC (b1,c1) -> let lastq = subfunc(used)
                         let (clist,used1) = edgesC (lastq+1) (c1) (qe) (used@[lastq+1])
-                        ([qo,CheckBol(LogAndB(b1,LogNotB(matchdtob(d)))),lastq+1]@clist,used1, d)// this should be b|d but for that need to B to be boolean and too lazy to do that
+                        ([qo,CheckBol(LogAndB(b1,LogNotB(matchdtob(d)))),lastq+1]@clist,used1, ( (evalB (b1))|| d))// this should be b|d but for that need  B to be boolean and too lazy to do that
     |StateGC (g1,g2) -> let (gclist1,used1,d1) = edgesGC (qo) (g1) (qe) (used) (d)              
                         let (gclist2,used2,d2) = edgesGC (qo) (g2) (qe) (used1) (d1)
                         (gclist1@gclist2,used2,d2)
@@ -126,14 +231,14 @@ let parse input =
     res
 // The response from the requests made on this website
 // will contain system output from e.g. printfn
-
+let mem = Map.ofList[("a",1);("y",2);("x",3)]
 let strings = [|
     ("a:=10","AssignC(a,NUM 10)")
     //these two are straight from the fm4fun website
     ("y:=1; do x>0 -> y:=x*y; x:=x-1 od", "factorial function")
-    ("i:=0; j:=0; do (i<n)&((j=m)|(i<j)) -> A[i]:=A[i]+27; i:=i+1 [] (j<m)&((i=n)|(!(i<j))) -> B[j]:=B[j]+12; j:=j+1 od", "database")
+   // ("i:=0; j:=0; do (i<n)&((j=m)|(i<j)) -> A[i]:=A[i]+27; i:=i+1 [] (j<m)&((i=n)|(!(i<j))) -> B[j]:=B[j]+12; j:=j+1 od", "database")
         |]
-     
+    
 let rec listtograph (edgeslist) =
     match edgeslist with
     |[] -> "digraph program_graph {\n node [shape = circle]; q0; \n node [shape = doublecircle]; q1; \n node [shape = circle]"
@@ -145,7 +250,7 @@ Array.map
             let actualResult = ((parse(toParse)))
              
             let (edgeslist,used) = (edgesC (0) (actualResult) (1) ([0;1]))
-            printfn "evaluating the AST %A gives the result:  %A \n }" actualResult (edgeslist)
+            printfn "evaluating the AST %A gives the result:  %A \n %A }" actualResult (edgeslist) (interpreter edgeslist mem)
                  // when printing out the graphviz, the text includes \ which needs to be removed...
         )
         strings
