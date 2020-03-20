@@ -50,14 +50,21 @@ let rec Pow (e1) (e2) =
 let rec calA e mem = 
     match e with
     | Num(e1) -> e1
-    | Xval(e1) -> 0 // take value from the memory
+    | Xval(e1) -> let value = Map.tryFind e1 mem
+                  match value with
+                  |Some b -> b
+                  |None -> 0 // so if e1 is not a part of the mem then return 0
     | UPlusExpr(e1) -> calA (e1) (mem)
     | PlusExpr(e1, e2) -> (calA e1 mem) + (calA e2 mem)
     | MinusExpr(e1, e2) -> (calA e1 mem) - (calA e2 mem)
     | PowExpr(e1, e2) -> Pow (calA e1 mem) ( calA e2 mem)
     | TimesExpr(e1, e2) -> (calA e1 mem) * ( calA e2 mem)
     | UMinusExpr(e1) -> - calA e1 mem
-    | ArrayExpr(e1, e2) -> calA e2 mem // need to change this  
+    | ArrayExpr(e1, e2) ->let value = calA e2 mem
+                          let value2 = Map.tryFind e1[value] 
+                           match value2 with
+                           |Some b -> b
+                           |None -> 0 // so if e1[value] is not a part of the mem then return 0
     | DivExpr(e1,e2) -> (calA e1 mem) / ( calA e2 mem)
 
 let rec calB e mem =
@@ -82,8 +89,8 @@ let rec calB e mem =
 
 let rec calC e mem = // return memory
   match e with
-  |AssignC (e1,e2) // change memory
-  | AssignArrayC (e1,e2,e3) // change memory
+  |AssignC (e1,e2) -> Map.add e1 (calA(e2)) mem
+  | AssignArrayC (e1,e2,e3) Map.add (e1[calA(e2)]) (calA(e3)) mem
   | SkipC -> mem
   | StateC (e1,e2) // follow the book
   | IfStateC (gc1) //follow the book
