@@ -24,7 +24,6 @@ let rec EvalA e =
     | UMinusExpr(e1) -> "-" + EvalA e1
     | ArrayExpr(e1, e2) -> e1 + "[" + EvalA e2 + "]"
     | DivExpr(e1,e2) -> EvalA e1 + "/" + EvalA e2
-
 let rec evalB e =
     match e with
     | BitAndB(e1, e2) -> evalB e1 + "&" + evalB e2
@@ -41,64 +40,8 @@ let rec evalB e =
     | WutT -> "true"
     | WutF -> "false"
 
-let rec Pow (e1) (e2) =
-    match e2 with
-    |1 -> e1
-    |x -> Pow (e1*e1) (e2-1)
 
 
-let rec calA e mem = 
-    match e with
-    | Num(e1) -> e1
-    | Xval(e1) -> let value = Map.tryFind e1 mem
-                  match value with
-                  |Some b -> b
-                  |None -> 0 // so if e1 is not a part of the mem then return 0
-    | UPlusExpr(e1) -> calA (e1) (mem)
-    | PlusExpr(e1, e2) -> (calA e1 mem) + (calA e2 mem)
-    | MinusExpr(e1, e2) -> (calA e1 mem) - (calA e2 mem)
-    | PowExpr(e1, e2) -> Pow (calA e1 mem) ( calA e2 mem)
-    | TimesExpr(e1, e2) -> (calA e1 mem) * ( calA e2 mem)
-    | UMinusExpr(e1) -> - calA e1 mem
-    | ArrayExpr(e1, e2) ->let value = calA e2 mem
-                          let value2 = Map.tryFind e1[value] 
-                           match value2 with
-                           |Some b -> b
-                           |None -> 0 // so if e1[value] is not a part of the mem then return 0
-    | DivExpr(e1,e2) -> (calA e1 mem) / ( calA e2 mem)
-
-let rec calB e mem =
-    match e with
-    | BitAndB(e1, e2) -> let lhs = calB(e1) mem
-                         let rhs = calB(e2) mem
-                         lhs && rhs
-    | BitOrB(e1, e2) ->let lhs = calB(e1) mem
-                       let rhs = calB(e2) mem
-                       lhs || rhs
-    | LogAndB(e1, e2) -> calB e1 mem && calB e2 mem
-    | LogOrB(e1, e2) -> calB e1 mem || calB e2 mem
-    | LogNotB(e1) ->  not (calB e1 mem)
-    | BEqual(e1, e2) -> calA e1 mem = calA e2 mem
-    | NotEqualB(e1, e2) -> calA e1 mem <> calA e2 mem
-    | GThanB(e1, e2) -> calA e1 mem > calA e2 mem
-    | LThanB(e1, e2) -> calA e1 mem < calA e2 mem
-    | GEThanB(e1, e2) -> calA e1 mem >= calA e2 mem
-    | LEThanB(e1, e2) -> calA e1 mem <= calA e2 mem
-    | WutT -> true
-    | WutF -> false
-
-let rec calC e mem = // return memory
-  match e with
-  |AssignC (e1,e2) -> Map.add e1 (calA(e2)) mem
-  | AssignArrayC (e1,e2,e3) Map.add (e1[calA(e2)]) (calA(e3)) mem
-  | SkipC -> mem
-  | StateC (e1,e2) // follow the book
-  | IfStateC (gc1) //follow the book
-  | DoloopC (gc1) // follow the book
-and calGC e mem =
- match e with 
- |ARROWGC (b1,c1) //follow the book
- |StateGC (g1,g2) //follow the book
 
 
 let rec subfunc (used)=
@@ -106,17 +49,40 @@ let rec subfunc (used)=
     |[] -> 0 //never the case 
     |x::[] ->x // last node in the used 
     |x::xs ->subfunc(xs)
-
 let booltostring (d)=
     if (d)
     then "true"
     else "false"
-
+    
+let rec NondoneGC e =
+    match e with
+    |ARROWGC (b1,c1) -> "!" + evalB (b1)
+    |StateGC (g1,g2) -> NondoneGC (g1) + "$$" + NondoneGC (g2)
+let rec NonedgesC (qo: int) (e: CExp) (qe: int) (used) = //initially qe=1, qo=0, used= [0,1]
+  match e with
+  |AssignC (e1,e2) -> ([(qo, e1 + ":=" + EvalA(e2), qe)],used)
+  |AssignArrayC (e1,e2,e3) -> ([(qo, e1 + "[" + EvalA e2 + "]" + ":=" + EvalA e3, qe)],used)
+  |SkipC -> ([(qo, "Skip" , qe)],used)
+  |StateC (e1, e2) -> let lastq = subfunc(used)
+                      let (e1list,used1) = NonedgesC (qo) (e1) (lastq+1) (used@[lastq+1]) 
+                      let (e2list,used2) = NonedgesC (lastq+1) (e2) (qe) (used1)
+                      (e1list@e2list,used2) 
+  |IfStateC (gc1) -> NonedgesGC (qo) gc1 (qe) (used)
+  |DoloopC (gc1) -> let b = NondoneGC (gc1)
+                    let (gclist,used1) = NonedgesGC(qo)(gc1)(qo)(used)
+                    (gclist@[(qo,b,qe)],used1)
+and NonedgesGC (qo:int) (e: GCExp) (qe: int) (used)=
+    match e with
+    |ARROWGC (b1,c1) -> let lastq = subfunc(used)
+                        let (clist,used2) = NonedgesC (lastq+1) (c1) (qe) (used@[(lastq+1)])
+                        ([(qo, evalB(b1),lastq+1)]@clist,used2)
+    |StateGC (g1,g2) -> let (g1list,used1)= NonedgesGC (qo) (g1) (qe) (used)
+                        let (g2list,used2)= NonedgesGC (qo) (g2) (qe) (used1)
+                        (g1list@g2list,used2)
 let rec doneGC e =
     match e with
     |ARROWGC (b1,c1) -> "!" + evalB (b1)
     |StateGC (g1,g2) -> doneGC (g1) + "$$" + doneGC (g2)
-
 let rec edgesC (qo: int) (e: CExp) (qe: int) (used) = //initially qe=1, qo=0, used= [0,1]
   match e with
   |AssignC (e1,e2) -> ([(qo, e1 + ":=" + EvalA(e2), qe)],used)
@@ -138,9 +104,6 @@ and edgesGC (qo:int) (e: GCExp) (qe: int) (used) (d)= // d is bool
     |StateGC (g1,g2) -> let (gclist1,used1,d1) = edgesGC (qo) (g1) (qe) (used) (d)              
                         let (gclist2,used2,d2) = edgesGC (qo) (g2) (qe) (used1) (d1)
                         (gclist1@gclist2,used2,d2)
-
-
-
 // We parse the input
 let parse input =
     // translate string into a buffer of characters
@@ -149,13 +112,10 @@ let parse input =
     let res = Parser.start Lexer.tokenize lexbuf
     // return the result of parsing (i.e. value of type "expr")
     res
-
 // The response from the requests made on this website
 // will contain system output from e.g. printfn
-
 //Set the following boolean constant to true if you want the deterministic Program Graph
-
-
+let deterministic = true
 let strings = [|
     ("a:=10","AssignC(a,NUM 10)")
     //these two are straight from the fm4fun website
@@ -172,12 +132,14 @@ let rec listtograph (edgeslist) =
 Array.map 
         (fun (toParse,expectedResult) -> 
             let actualResult = ((parse(toParse)))
-            let (edgeslist,used) = (edgesC (0) (actualResult) (1) ([0;1]))
-            printfn "evaluating the AST %A gives the result:  %A \n %s \n }" actualResult (edgeslist) (listtograph (edgeslist))
+            if (deterministic) 
+            then let (edgeslist,used) = (edgesC (0) (actualResult) (1) ([0;1]))
+                 printfn "evaluating the AST %A gives the result:  %A \n %s \n }" actualResult (edgeslist) (listtograph (edgeslist))
                  // when printing out the graphviz, the text includes \ which needs to be removed...
-             
+                 
+            else let (edgeslist,used) = (NonedgesC (0) (actualResult) (1) ([0;1]))
+                 printfn "evaluating the AST %A gives the result:  %A" actualResult (edgeslist)
         )
         strings
-
 // Feel free to copy this example and write some more test cases.
 // NB: currently newline character \n will not be formatted
