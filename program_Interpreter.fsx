@@ -169,19 +169,30 @@ let rec calLabel e mem =
   |MemUpdateArray ( (e1,e2,e3)) ->  Some mem // need to figure out how to access memories for arrays 
 
 
-// We need a function which takes the edges and recursively runs the calLabel on each label until the list is empty
+// We need a function which takes the edges and recursively runs the calLabel on each label until the end node is reached
 
-let rec interpreter e mem = // mem needs to be defined when calling the interpreter
+let rec findnode xlist e mem= // xlist is edges e is node to find and mem is memory 
+    match xlist with 
+    |[] -> None
+    |(qstart,CheckBol(b),qend)::xs when qstart=e ->  if (calB b mem)
+                                                     then Some (qstart,CheckBol(b),qend)
+                                                     else findnode xs e mem
+    |(qstart,label,qend)::xs when qstart=e -> Some (qstart,label,qend)
+    |(qstart,label,qend)::xs -> findnode xs e mem
+
+
+
+let rec interpreter xlist e mem = // xlist is the list of edges, e is the current node and mem is the memory
   match e with
-  |[] -> Some mem
-  |(qo,label,qe)::xs -> let mem2 = calLabel label mem
-                        match mem2 with 
-                        |Some a -> interpreter xs a
-                        | None ->None
-
-
-
-
+  |1-> Some mem // as 1 is the end node in our program
+  |x -> let edge = findnode xlist e mem
+        match edge with
+        |None -> None
+        |Some (qo,label,qe) -> let mem2 = calLabel label mem
+                               match mem2 with 
+                               |Some a -> interpreter xlist qe a
+                               |None ->None
+  
 let rec subfunc (used)=
     match used with
     |[] -> 0 //never the case 
@@ -233,7 +244,7 @@ let parse input =
 // will contain system output from e.g. printfn
 let mem = Map.ofList[("a",1);("y",2);("x",3)]
 let strings = [|
-    ("a:=10","AssignC(a,NUM 10)")
+   // ("a:=10","AssignC(a,NUM 10)")
     //these two are straight from the fm4fun website
     ("y:=1; do x>0 -> y:=x*y; x:=x-1 od", "factorial function")
    // ("i:=0; j:=0; do (i<n)&((j=m)|(i<j)) -> A[i]:=A[i]+27; i:=i+1 [] (j<m)&((i=n)|(!(i<j))) -> B[j]:=B[j]+12; j:=j+1 od", "database")
@@ -250,7 +261,7 @@ Array.map
             let actualResult = ((parse(toParse)))
              
             let (edgeslist,used) = (edgesC (0) (actualResult) (1) ([0;1]))
-            printfn "evaluating the AST %A gives the result:  %A \n %A }" actualResult (edgeslist) (interpreter edgeslist mem)
+            printfn "evaluating the AST %A gives the result:  %A \n %A }" actualResult (edgeslist) (interpreter edgeslist 0 mem)
                  // when printing out the graphviz, the text includes \ which needs to be removed...
         )
         strings
