@@ -43,8 +43,7 @@ and GCExp =
     | StateGC of (GCExp *GCExp)
     
 type LabelPG =
-    |MemUpdate of CExp
+    |MemUpdate of (VarX * AExp) 
     |SkipPG
     |CheckBol of BExp
-    |MemUpdateArray of CExp
-
+    |MemUpdateArray of (VarX * AExp * AExp)
