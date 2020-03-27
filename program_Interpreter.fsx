@@ -242,12 +242,12 @@ let parse input =
     res
 // The response from the requests made on this website
 // will contain system output from e.g. printfn
-let mem = Map.ofList[("a",1);("y",2);("x",3)]
+let mem = Map.ofList[("z",0);("y",10);("x",8)]
 let strings = [|
    // ("a:=10","AssignC(a,NUM 10)")
     //these two are straight from the fm4fun website
-    ("y:=1; do x>0 -> y:=x*y; x:=x-1 od", "factorial function")
-   // ("i:=0; j:=0; do (i<n)&((j=m)|(i<j)) -> A[i]:=A[i]+27; i:=i+1 [] (j<m)&((i=n)|(!(i<j))) -> B[j]:=B[j]+12; j:=j+1 od", "database")
+    //  ("y:=1; do x>0 -> y:=x*y; x:=x-1 od", "factorial function")
+     (" if x >= y -> z:=x [] y > x -> z:=y fi ","max")
         |]
     
 let rec listtograph (edgeslist) =
@@ -261,7 +261,7 @@ Array.map
             let actualResult = ((parse(toParse)))
              
             let (edgeslist,used) = (edgesC (0) (actualResult) (1) ([0;1]))
-            printfn "evaluating the AST %A gives the result:  %A \n %A }" actualResult (edgeslist) (interpreter edgeslist 0 mem)
+            printfn "evaluating the AST %A gives the result:  %A \n }" actualResult (edgeslist) //(interpreter edgeslist 0 mem)
                  // when printing out the graphviz, the text includes \ which needs to be removed...
         )
         strings
