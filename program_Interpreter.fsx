@@ -28,8 +28,7 @@ let rec evalA e =
     | TimesExpr(e1, e2) -> evalA e1 * evalA e2
     | UMinusExpr(e1) ->  - evalA e1
     | ArrayExpr(e1, e2) -> evalA e2
-    | DivExpr(e1,e2) ->   evalA e1 /evalA e2
-
+    | DivExpr(e1,e2) ->   evalA e1 / evalA e2
 
 let rec evalB e =
     match e with
@@ -50,6 +49,11 @@ let rec evalB e =
     | LEThanB(e1, e2) ->  evalA e1 <= evalA e2
     | WutT -> true
     | WutF -> false
+    
+let rec calLength e1 sum = 
+    match e1 with
+    | [] -> sum
+    | x::xlist -> calLength xlist (sum+1)
     
 let rec calA e mem =
     match e with
@@ -88,7 +92,15 @@ let rec calA e mem =
                           match value1 with 
                           | Some a -> Some (- a)
                           |None ->None
-    | ArrayExpr(e1, e2) -> Some 3  // just for testing... need to be fixed such that we return the value stored at the memory location e1[e2] 
+                          
+    | ArrayExpr(e1, e2) -> Some 3
+    //let value1 = Map.tryFind e1 mem
+      //                     match value1 with
+        //                   |Some a -> if evalA (e2) >= 0 && evalA (e2) < (calLength (a) 0)        //not working yet since a is returning as an int not an array
+            //                          then Some a.[evalA (e2)]  
+          //                            else None
+              //             |None ->None
+                            
     | DivExpr(e1,e2) ->   let value1 = (calA e1 mem) 
                           let value2 = (calA e2 mem)
                           match value1 with 
@@ -166,12 +178,11 @@ let rec calLabel e mem =
   |CheckBol(b)-> if (calB b mem)
                  then Some mem
                  else None
-  |MemUpdateArray ( (e1,e2,e3)) ->  Some mem // need to figure out how to access memories for arrays 
-
-
+  |MemUpdateArray ( (e1,e2,e3)) ->  Some mem // still need to figure out how to access memories for arrays 
+                    
 // We need a function which takes the edges and recursively runs the calLabel on each label until the end node is reached
 
-let rec findnode xlist e mem= // xlist is edges e is node to find and mem is memory 
+let rec findnode xlist e mem= // xlist is edges, e is node to find, and mem is memory 
     match xlist with 
     |[] -> None
     |(qstart,CheckBol(b),qend)::xs when qstart=e ->  if (calB b mem)
@@ -182,7 +193,7 @@ let rec findnode xlist e mem= // xlist is edges e is node to find and mem is mem
 
 
 
-let rec interpreter xlist e mem = // xlist is the list of edges, e is the current node and mem is the memory
+let rec interpreter xlist e mem = // xlist is the list of edges, e is the current node, and mem is the memory
   match e with
   |1-> Some mem // as 1 is the end node in our program
   |x -> let edge = findnode xlist e mem
@@ -204,8 +215,6 @@ let booltostring (d)=
     else "false"
 
 //Creates edges for the interpreter 
-
-    
 let matchdtob d =
     match d with
     |true -> WutT
@@ -216,22 +225,31 @@ let rec edgesC (qo: int) (e: CExp) (qe: int) (used) = //initially qe=1, qo=0, us
   |AssignC (e1,e2) -> ([(qo, MemUpdate((e1,e2)), qe)],used)
   |AssignArrayC (e1,e2,e3) -> ([(qo, MemUpdateArray((e1,e2,e3)), qe)],used)
   |SkipC -> ([(qo, SkipPG , qe)],used)
+  
+  
   |StateC (e1, e2) -> let lastq = subfunc(used)
                       let (e1list,used1) = edgesC (qo) (e1) (lastq+1) (used@[lastq+1]) 
                       let (e2list,used2) = edgesC (lastq+1) (e2) (qe) (used1)
                       (e1list@e2list,used2) 
-  |IfStateC (gc1) ->let (E,used1,d) = edgesGC (qo) gc1 (qe) (used) (false)
-                    (E,used1)
+                      
+                      
+  |IfStateC (gc1) -> let (E,used1,d) = edgesGC (qo) gc1 (qe) (used) (false)
+                     (E,used1)
+
+
   |DoloopC (gc1) -> let (E,used1,d) = edgesGC (qo) gc1 (qo) (used) (false)
                     (E@[(qo, CheckBol(LogNotB(matchdtob(d))), qe)],used1)
+                    
+                    
 and edgesGC (qo:int) (e: GCExp) (qe: int) (used) (d)= // d is bool 
     match e with
     |ARROWGC (b1,c1) -> let lastq = subfunc(used)
                         let (clist,used1) = edgesC (lastq+1) (c1) (qe) (used@[lastq+1])
-                        ([qo,CheckBol(LogAndB(b1,LogNotB(matchdtob(d)))),lastq+1]@clist,used1, ( (evalB (b1))|| d))// this should be b|d but for that need  B to be boolean and too lazy to do that
+                        ([qo,CheckBol(LogAndB(b1,LogNotB(matchdtob(d)))),lastq+1]@clist,used1, ( (evalB (b1))|| d))
     |StateGC (g1,g2) -> let (gclist1,used1,d1) = edgesGC (qo) (g1) (qe) (used) (d)              
                         let (gclist2,used2,d2) = edgesGC (qo) (g2) (qe) (used1) (d1)
                         (gclist1@gclist2,used2,d2)
+
 // We parse the input
 let parse input =
     // translate string into a buffer of characters
@@ -244,10 +262,13 @@ let parse input =
 // will contain system output from e.g. printfn
 let mem = Map.ofList[("z",0);("y",10);("x",8)]
 let strings = [|
-   // ("a:=10","AssignC(a,NUM 10)")
-    //these two are straight from the fm4fun website
-    //  ("y:=1; do x>0 -> y:=x*y; x:=x-1 od", "factorial function")
-     (" if x >= y -> z:=x [] y > x -> z:=y fi ","max")
+   // ("a:=10;b:=12;c:=14","AssignC(a,NUM 10)")
+    //these are straight from the fm4fun website
+      ("y:=1; do x>0 -> y:=x*y; x:=x-1 od", "factorial function")
+    // (" if x >= y -> z:=x [] y > x -> z:=y fi ","max")        //this one doesnt work because of the []
+     // ("y:=1; if x>0 -> y:=x*y; x:=x-1 fi", "simple IF")
+   // ("do x>=y -> z:=x [] y>x -> z:=y od", "testing do with []")    //this one doesn't work either
+    //    ("i:=1; do i<n -> j:=i;  do (j>0)&&(A[j-1]>A[j]) -> t:=A[j]; A[j]:=A[j-1]; A[j-1]:=t; j:=j-1 od; i:=i+1 od", "insertion sort")
         |]
     
 let rec listtograph (edgeslist) =
@@ -261,9 +282,8 @@ Array.map
             let actualResult = ((parse(toParse)))
              
             let (edgeslist,used) = (edgesC (0) (actualResult) (1) ([0;1]))
-            printfn "evaluating the AST %A gives the result:  %A \n }" actualResult (edgeslist) //(interpreter edgeslist 0 mem)
+        //    printfn "evaluating the AST %A }" actualResult 
+            printfn "evaluating the AST %A gives the result: %A \n %A}" actualResult (edgeslist) (interpreter edgeslist 0 mem)
                  // when printing out the graphviz, the text includes \ which needs to be removed...
         )
         strings
-// Feel free to copy this example and write some more test cases.
-// NB: currently newline character \n will not be formatted
