@@ -1,4 +1,6 @@
 # Assignment02141
+**We are currently still working through some issues concerning array memory and the GC [] GC command. 
+
 The overall goal of the assignment is to build a tool for running and analyzing programs written in a variant of the Guarded Command Language (GCL). 
 The language for all the files is F#
 The assignment is divided in tasks. Each task is devoted to a module of the tool (a parser, a compiler, an interpreter and several analysers). Each module should be runnable as a standalone program that takes as input a GCL program and produces a result.
@@ -20,3 +22,4 @@ Precedence and associativity rules:
   - Operators *, /, +, -, &, |, &&, and || are left-associative.
   - Operators ^, [], and ; are right associative.
   
+  We are currently still working through some issues concerning array memory and the GC [] GC command. 
