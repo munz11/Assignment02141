@@ -1,4 +1,4 @@
-// This script implements our interactive calculator
+ // This script implements our interactive calculator
 // We need to import a couple of modules, including the generated lexer and parser
 #r "../../FsLexYacc.Runtime.7.0.6/lib/portable-net45+netcore45+wpa81+wp8+MonoAndroid10+MonoTouch10/FsLexYacc.Runtime.dll"
 open Microsoft.FSharp.Text.Lexing
@@ -93,13 +93,9 @@ let rec calA e mem =
                           | Some a -> Some (- a)
                           |None ->None
                           
-    | ArrayExpr(e1, e2) -> Some 3
-    //let value1 = Map.tryFind e1 mem
-      //                     match value1 with
-        //                   |Some a -> if evalA (e2) >= 0 && evalA (e2) < (calLength (a) 0)        //not working yet since a is returning as an int not an array
-            //                          then Some a.[evalA (e2)]  
-          //                            else None
-              //             |None ->None
+    | ArrayExpr(e1, e2) -> let stringe1 = e1 + "[" + string (evalA e2) + "]"
+                           let value1 = Map.tryFind stringe1 (mem: Map<string,int>)
+                           value1
                             
     | DivExpr(e1,e2) ->   let value1 = (calA e1 mem) 
                           let value2 = (calA e2 mem)
@@ -178,7 +174,17 @@ let rec calLabel e mem =
   |CheckBol(b)-> if (calB b mem)
                  then Some mem
                  else None
-  |MemUpdateArray ( (e1,e2,e3)) ->  Some mem // still need to figure out how to access memories for arrays 
+  |MemUpdateArray ( (e1,e2,e3)) -> let value1 = calA e2 mem
+                                   match value1 with
+                                   |Some a -> let value2 = calA e3 mem
+                                              match value2 with 
+                                              |Some b -> let stringe1 = e1 + "[" + string (evalA e2) + "]"
+                                                         let value1 = Map.tryFind stringe1 (mem: Map<string,int>)
+                                                         match value1 with
+                                                         |Some a ->  Some (Map.add stringe1 b mem)
+                                                         |None -> None
+                                              |None -> None
+                                   |None -> None                  
                     
 // We need a function which takes the edges and recursively runs the calLabel on each label until the end node is reached
 
@@ -262,10 +268,10 @@ let parse input =
 // will contain system output from e.g. printfn
 let mem = Map.ofList[("z",0);("y",10);("x",8)]
 let strings = [|
-   // ("a:=10;b:=12;c:=14","AssignC(a,NUM 10)")
+    ("if x >= y -> z:=x [] y > x -> z:=y fi","AssignC(a,NUM 10)")
     //these are straight from the fm4fun website
-      ("y:=1; do x>0 -> y:=x*y; x:=x-1 od", "factorial function")
-    // (" if x >= y -> z:=x [] y > x -> z:=y fi ","max")        //this one doesnt work because of the []
+     // ("y:=1; do x>0 -> y:=x*y; x:=x-1 od", "factorial function")
+   // (" if x >= y -> z:=x [] y > x -> z:=y fi ","max")        //this one doesnt work because of the []
      // ("y:=1; if x>0 -> y:=x*y; x:=x-1 fi", "simple IF")
    // ("do x>=y -> z:=x [] y>x -> z:=y od", "testing do with []")    //this one doesn't work either
     //    ("i:=1; do i<n -> j:=i;  do (j>0)&&(A[j-1]>A[j]) -> t:=A[j]; A[j]:=A[j-1]; A[j-1]:=t; j:=j-1 od; i:=i+1 od", "insertion sort")
@@ -281,9 +287,9 @@ Array.map
         (fun (toParse,expectedResult) -> 
             let actualResult = ((parse(toParse)))
              
-            let (edgeslist,used) = (edgesC (0) (actualResult) (1) ([0;1]))
+           // let (edgeslist,used) = (edgesC (0) (actualResult) (1) ([0;1]))
         //    printfn "evaluating the AST %A }" actualResult 
-            printfn "evaluating the AST %A gives the result: %A \n %A}" actualResult (edgeslist) (interpreter edgeslist 0 mem)
+            printfn "evaluating the AST %A }" actualResult // (edgeslist) (interpreter edgeslist 0 mem)
                  // when printing out the graphviz, the text includes \ which needs to be removed...
         )
         strings
