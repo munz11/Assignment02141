@@ -29,7 +29,6 @@ rule tokenize = parse
 | "true"        { WUTT }
 | "false"       { WUTF }
 | newline       { lexbuf.EndPos <- lexbuf.EndPos.NextLine; tokenize lexbuf; }
-| xval          { XVAR((LexBuffer<_>.LexemeString lexbuf)) }
 | ":="          { ASSIGN }
 | "||"          { OR }
 | "->"          { ARROW }
@@ -44,6 +43,7 @@ rule tokenize = parse
 | '^'           { POW }
 | '('           { LPAR }
 | ')'           { RPAR }
+| "[]"          { SQR  }
 | '['           { LSPAR }
 | ']'           { RSPAR }
 | '&'           { BITAND }
@@ -54,4 +54,6 @@ rule tokenize = parse
 | '<'           { LESSER }
 | ';'           { STATE }
 | num           { NUM(Int32.Parse(LexBuffer<_>.LexemeString lexbuf)) }
+| xval          { XVAR((LexBuffer<_>.LexemeString lexbuf)) }
 | eof           { EOF }
+
