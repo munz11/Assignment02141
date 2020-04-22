@@ -13,13 +13,14 @@ open Parser
 #load "Lexer.fs"
 open Lexer
 
-let Sign (e1:int) = if (e1 > 0) then "+" else if (e1 < 0) then "-" else "0"
+let Sign (e1:int) = if (e1 > 0) then Set.ofList["+"]  else if (e1 < 0) then Set.ofList["-"] else Set.ofList["0"]
 
-let Plus (s1) (s2) = "0"
-let Minus (s1) (s2) = "0"
-let Pow2 (s1) (s2) = "0"
-let Times (s1) (s2) = "0"
-let Div (s1) (s2) = "0"
+let Plus (s1) (s2) = Set.ofList(["+"])
+
+let Minus (s1) (s2) = Set.ofList(["+"])
+let Pow2 (s1) (s2) = Set.ofList(["+"])
+let Times (s1) (s2) = Set.ofList(["+"])
+let Div (s1) (s2) = Set.ofList(["+"])
 
 let Equal (s1) (s2) =true
 let NotEqual (s1) (s2) =true
@@ -28,23 +29,29 @@ let LessThan (s1) (s2) = true
 let GEThan (s1) (s2) = true
 let LEThan (s1) (s2) =true
 
+let rec UMinus (s1) result = 
+    match s1 with 
+    |[] -> Set.ofList(result)
+    |x::xlist -> let element = (if (x = "-" ) then "+" else if (x = "+") then "-" else "0")
+                 UMinus (xlist) (result@([element]@xlist))
+    
 
 
 
 let rec SignA (a:AExp) absmemelement = 
     match a with 
-    | Num(e1) -> Sign (e1)
-    | Xval(e1) -> let (map1,map2) = absmemelement 
-                  Map.find (e1) map1
-    | UPlusExpr(e1) -> SignA (e1) absmemelement
-    | PlusExpr(e1, e2) ->  Plus (SignA e1 absmemelement) (SignA e2 absmemelement)
-    | MinusExpr(e1, e2) -> Minus (SignA e1 absmemelement) (SignA e2 absmemelement)
-    | PowExpr(e1, e2) -> Pow2 (SignA e1 absmemelement) (SignA e2 absmemelement)
-    | TimesExpr(e1, e2) -> Times (SignA e1 absmemelement) (SignA e2 absmemelement)
-    | UMinusExpr(e1) -> let s = SignA e1 absmemelement
-                        if (s = "-" ) then "+" else if (s = "+") then "-" else "0"
-    | ArrayExpr(e1, e2) -> "0"
-    | DivExpr(e1,e2) ->   Div (SignA e1 absmemelement) (SignA e2 absmemelement)
+    | Num(e1) ->Set.ofList([Sign (e1)])
+    | Xval(e1) ->let (map1,map2) = absmemelement 
+                 Map.find (e1) map1
+    | UPlusExpr(e1) ->SignA (e1) absmemelement
+    | PlusExpr(e1,e2) ->Plus (SignA e1 absmemelement) (SignA e2 absmemelement)
+    | MinusExpr(e1,e2) ->Minus (SignA e1 absmemelement) (SignA e2 absmemelement)
+    | PowExpr(e1,e2) ->Pow2 (SignA e1 absmemelement) (SignA e2 absmemelement)
+    | TimesExpr(e1,e2) ->Times (SignA e1 absmemelement) (SignA e2 absmemelement)
+    | UMinusExpr(e1) ->let s = SignA e1 absmemelement
+                       UMinus (s) []
+    | ArrayExpr(e1, e2) ->Set.ofList(["0"])
+    | DivExpr(e1,e2) ->Div (SignA e1 absmemelement) (SignA e2 absmemelement)
 
 
 
@@ -332,7 +339,7 @@ let parse input =
     res
 // The response from the requests made on this website
 // will contain system output from e.g. printfn
-let absmem = Set.ofList([((Map.ofList[("z",0);("y",10);("x",8)]),(Map.ofList[("A",["0","+","-"])]))])
+let absmem = Set.ofList([((Map.ofList[("z",Set.ofList["0"]);("y",Set.ofList["+"]);("x",Set.ofList["-"])]),(Map.ofList[("A",["0","+","-"])]))])
 let strings = [|
     ("if x >= y -> z:=x [] y > x -> z:=y fi","AssignC(a,NUM 10)")
     //these are straight from the fm4fun website
