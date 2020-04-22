@@ -1,4 +1,6 @@
- // This script implements our interactive calculator
+// This script implements our interactive calculator
+
+// This script implements our interactive calculator
 // We need to import a couple of modules, including the generated lexer and parser
 #r "../../FsLexYacc.Runtime.7.0.6/lib/portable-net45+netcore45+wpa81+wp8+MonoAndroid10+MonoTouch10/FsLexYacc.Runtime.dll"
 open Microsoft.FSharp.Text.Lexing
@@ -10,6 +12,65 @@ open TypesAST
 open Parser
 #load "Lexer.fs"
 open Lexer
+
+let Sign (e1:int) = if (e1 > 0) then "+" else if (e1 < 0) then "-" else "0"
+
+let Plus (s1) (s2) = "0"
+let Minus (s1) (s2) = "0"
+let Pow2 (s1) (s2) = "0"
+let Times (s1) (s2) = "0"
+let Div (s1) (s2) = "0"
+
+let Equal (s1) (s2) =true
+let NotEqual (s1) (s2) =true
+let GreaterThan (s1) (s2) =true
+let LessThan (s1) (s2) = true
+let GEThan (s1) (s2) = true
+let LEThan (s1) (s2) =true
+
+
+
+
+let rec SignA (a:AExp) absmemelement = 
+    match a with 
+    | Num(e1) -> Sign (e1)
+    | Xval(e1) -> let (map1,map2) = absmemelement 
+                  Map.find (e1) map1
+    | UPlusExpr(e1) -> SignA (e1) absmemelement
+    | PlusExpr(e1, e2) ->  Plus (SignA e1 absmemelement) (SignA e2 absmemelement)
+    | MinusExpr(e1, e2) -> Minus (SignA e1 absmemelement) (SignA e2 absmemelement)
+    | PowExpr(e1, e2) -> Pow2 (SignA e1 absmemelement) (SignA e2 absmemelement)
+    | TimesExpr(e1, e2) -> Times (SignA e1 absmemelement) (SignA e2 absmemelement)
+    | UMinusExpr(e1) -> let s = SignA e1 absmemelement
+                        if (s = "-" ) then "+" else if (s = "+") then "-" else "0"
+    | ArrayExpr(e1, e2) -> "0"
+    | DivExpr(e1,e2) ->   Div (SignA e1 absmemelement) (SignA e2 absmemelement)
+
+
+
+
+let rec SignB (b:BExp) absmemelement =
+    match b with
+    | BitAndB(e1, e2) -> let lhs = (SignB e1 absmemelement)
+                         let rhs = (SignB e2 absmemelement) 
+                         lhs && rhs
+    | BitOrB(e1, e2) ->let lhs = (SignB e1 absmemelement) 
+                       let rhs = (SignB e2 absmemelement)
+                       lhs || rhs
+    | LogAndB(e1, e2) -> (SignB e1 absmemelement) && (SignB e2 absmemelement)
+    | LogOrB(e1, e2) -> (SignB e1 absmemelement) || (SignB e2 absmemelement)
+    | LogNotB(e1) ->  if (SignB e1 absmemelement) then false else true
+    | BEqual(e1, e2) ->  Equal (SignA e1 absmemelement) (SignA e2 absmemelement)
+    | NotEqualB(e1, e2) ->NotEqual (SignA e1 absmemelement) (SignA e2 absmemelement)
+    | GThanB(e1, e2) ->  GreaterThan (SignA e1 absmemelement) (SignA e2 absmemelement)
+    | LThanB(e1, e2) ->  LessThan (SignA e1 absmemelement) (SignA e2 absmemelement)
+    | GEThanB(e1, e2) ->  GEThan (SignA e1 absmemelement) (SignA e2 absmemelement)
+    | LEThanB(e1, e2) ->  LEThan (SignA e1 absmemelement) (SignA e2 absmemelement)
+    | WutT -> true
+    | WutF -> false
+
+
+
 // We define the evaluation function recursively, by induction on the structure
 // of edges of the graph
 
@@ -162,50 +223,55 @@ let rec calB e mem =
     | WutT -> true
     | WutF -> false
 
-let rec calLabel e mem =
+
+
+let rec ApplyForAllElement (x) (a) absmemlist result = 
+    match absmemlist  with 
+    |[] ->Some (Set.ofList(result))
+    |x2::xlist-> let s = SignA (a) x2
+                 let (map1,map2) = x2
+                 let map1Update = (Map.add (x,s) map1)
+                 //ApplyForAllElement (x) (a) (xlist) (result@[(map1Update,map2)]@xlist) gives weird comparison errors
+                 Some (Set.ofList(absmemlist)) // we neeed to fix this
+                
+
+
+
+let rec calLabel e absmem =
   match e with 
-  |MemUpdate ( (e1,e2)) -> let value = calA e2 mem
-                           match value with 
-                           |Some a -> match (Map.tryFind e1 mem) with
-                                      |Some x ->  Some (Map.add e1 a mem)
-                                      |None -> None
-                           |None -> None
-  |SkipPG -> Some mem
-  |CheckBol(b)-> if (calB b mem)
-                 then Some mem
-                 else None
-  |MemUpdateArray ( (e1,e2,e3)) -> let value1 = calA e2 mem
-                                   match value1 with
-                                   |Some a -> let value2 = calA e3 mem
-                                              match value2 with 
-                                              |Some b -> let stringe1 = e1 + "[" + string (evalA e2) + "]"
-                                                         let value1 = Map.tryFind stringe1 (mem: Map<string,int>)
-                                                         match value1 with
-                                                         |Some a ->  Some (Map.add stringe1 b mem)
-                                                         |None -> None
-                                              |None -> None
-                                   |None -> None                  
+  |MemUpdate ( (e1,e2)) -> ApplyForAllElement (e1) (e2) (Set.toList(absmem)) ([])
+  |SkipPG -> Some absmem
+  |CheckBol(b)-> Some (Set.filter(fun x -> SignB (b) x) absmem) 
+  |MemUpdateArray ( (e1,e2,e3)) -> Some absmem // will fix this some day       
                     
 // We need a function which takes the edges and recursively runs the calLabel on each label until the end node is reached
 
-let rec findnode xlist e mem= // xlist is edges, e is node to find, and mem is memory 
+let rec SignBforAll (b) absmemlist  = 
+    match absmemlist  with 
+    |[] -> true
+    |x2::xlist-> (SignB b x2) && (SignBforAll (b) xlist)
+
+
+
+
+let rec findnode xlist e absmem= // xlist is edges, e is node to find, and mem is memory 
     match xlist with 
     |[] -> None
-    |(qstart,CheckBol(b),qend)::xs when qstart=e ->  if (calB b mem)
+    |(qstart,CheckBol(b),qend)::xs when qstart=e ->  if (SignBforAll b (Set.toList(absmem)))
                                                      then Some (qstart,CheckBol(b),qend)
-                                                     else findnode xs e mem
+                                                     else findnode xs e absmem
     |(qstart,label,qend)::xs when qstart=e -> Some (qstart,label,qend)
-    |(qstart,label,qend)::xs -> findnode xs e mem
+    |(qstart,label,qend)::xs -> findnode xs e absmem
 
 
 
-let rec interpreter xlist e mem = // xlist is the list of edges, e is the current node, and mem is the memory
+let rec interpreter xlist e (absmem:Set<'a>) = // xlist is the list of edges, e is the current node, and mem is the memory
   match e with
-  |1-> Some mem // as 1 is the end node in our program
-  |x -> let edge = findnode xlist e mem
+  |1-> Some absmem 
+  |x -> let edge = findnode xlist e absmem
         match edge with
         |None -> None
-        |Some (qo,label,qe) -> let mem2 = calLabel label mem
+        |Some (qo,label,qe) -> let mem2 = calLabel label absmem
                                match mem2 with 
                                |Some a -> interpreter xlist qe a
                                |None ->None
@@ -266,7 +332,7 @@ let parse input =
     res
 // The response from the requests made on this website
 // will contain system output from e.g. printfn
-let mem = Map.ofList[("z",0);("y",10);("x",8)]
+let absmem = Set.ofList([((Map.ofList[("z",0);("y",10);("x",8)]),(Map.ofList[("A",["0","+","-"])]))])
 let strings = [|
     ("if x >= y -> z:=x [] y > x -> z:=y fi","AssignC(a,NUM 10)")
     //these are straight from the fm4fun website
@@ -287,9 +353,9 @@ Array.map
         (fun (toParse,expectedResult) -> 
             let actualResult = ((parse(toParse)))
              
-           // let (edgeslist,used) = (edgesC (0) (actualResult) (1) ([0;1]))
+            let (edgeslist,used) = (edgesC (0) (actualResult) (1) ([0;1]))
         //    printfn "evaluating the AST %A }" actualResult 
-            printfn "evaluating the AST %A }" actualResult // (edgeslist) (interpreter edgeslist 0 mem)
+            printfn "evaluating the AST %A %A" actualResult  (edgeslist) 
                  // when printing out the graphviz, the text includes \ which needs to be removed...
         )
         strings
