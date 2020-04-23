@@ -261,14 +261,12 @@ let rec calLabel e absmem =
   |CheckBol(b)-> Some (Set.filter(fun x -> SignB (b) x) absmem) 
   |MemUpdateArray ((e1,e2,e3)) -> Some absmem // don't know how to update arrays
                     
-// We need a function which takes the edges and recursively runs the calLabel on each label until the end node is reached
-
 let rec SignBforAll (b) absmemlist  = 
     match absmemlist  with 
     |[] -> true
     |x2::xlist-> (SignB b x2) && (SignBforAll (b) xlist)
 
-let rec findnode xlist e absmem= // xlist is edges, e is node to find, and mem is memory 
+let rec findnode xlist e absmem=  
     match xlist with 
     |[] -> None
     |(qstart,CheckBol(b),qend)::xs when qstart=e ->  if (SignBforAll b (Set.toList(absmem)))
@@ -277,7 +275,7 @@ let rec findnode xlist e absmem= // xlist is edges, e is node to find, and mem i
     |(qstart,label,qend)::xs when qstart=e -> Some (qstart,label,qend)
     |(qstart,label,qend)::xs -> findnode xs e absmem
 
-let rec interpreter xlist e (absmem:Set<'a>) = // xlist is the list of edges, e is the current node, and mem is the memory
+let rec interpreter xlist e (absmem:Set<'a>) = // xlist is the list of edges, e is the current node, and absmem is the abstract memory
   match e with
   |1-> Some absmem 
   |x -> let edge = findnode xlist e absmem
@@ -337,14 +335,14 @@ let parse input =
     res
 // The response from the requests made on this website
 // will contain system output from e.g. printfn
-let absmem = Set.ofList([((Map.ofList[("z",Set.ofList["0"]);("y",Set.ofList["+"]);("x",Set.ofList["-"])]),(Map.ofList[("A",Set.ofList["0","+","-"])]))])
+let absmem = Set.ofList([((Map.ofList[("z",Set.ofList["0"]);("y",Set.ofList["+"]);("x",Set.ofList["-"])]),(Map.ofList[("A",Set.ofList["0";"+";"-"])]))])
 let strings = [|
     ("if x >= y -> z:=x [] y > x -> z:=y fi","AssignC(a,NUM 10)")
     //these are straight from the fm4fun website
      // ("y:=1; do x>0 -> y:=x*y; x:=x-1 od", "factorial function")
-   // (" if x >= y -> z:=x [] y > x -> z:=y fi ","max")        //this one doesnt work because of the []
+   // (" if x >= y -> z:=x [] y > x -> z:=y fi ","max")       
      // ("y:=1; if x>0 -> y:=x*y; x:=x-1 fi", "simple IF")
-   // ("do x>=y -> z:=x [] y>x -> z:=y od", "testing do with []")    //this one doesn't work either
+   // ("do x>=y -> z:=x [] y>x -> z:=y od", "testing do with []")   
     //    ("i:=1; do i<n -> j:=i;  do (j>0)&&(A[j-1]>A[j]) -> t:=A[j]; A[j]:=A[j-1]; A[j-1]:=t; j:=j-1 od; i:=i+1 od", "insertion sort")
         |]
     
@@ -359,8 +357,11 @@ Array.map
             let actualResult = ((parse(toParse)))
              
             let (edgeslist,used) = (edgesC (0) (actualResult) (1) ([0;1]))
+            let absmemresult = match interpreter (edgeslist) (0) (absmem) with
+                               | Some memory -> memory
+                               | None -> Set.empty
         //    printfn "evaluating the AST %A }" actualResult 
-            printfn "evaluating the AST %A %A" actualResult  (edgeslist) 
+            printfn "evaluating the AST %A %A %A"  actualResult  (edgeslist) (absmemresult)
                  // when printing out the graphviz, the text includes \ which needs to be removed...
         )
         strings
