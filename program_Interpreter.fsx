@@ -15,23 +15,42 @@ open Lexer
 
 let Sign (e1:int) = if (e1 > 0) then Set.ofList["+"]  else if (e1 < 0) then Set.ofList["-"] else Set.ofList["0"]
 
-let Plus (s1) (s2) : Set<string>= if (Set.contains ("-") (s1) ) 
+let Plus (s2) (s1) : Set<string>= if (Set.contains ("-") (s1) ) 
                                   then((if (Set.contains ("+") (s2)) then Set.ofList["-";"0";"+"] else Set.ofList["-"]))
                                   else (if (Set.contains ("+") (s1)) then (if (Set.contains ("-") (s2))then Set.ofList["-";"0";"+"] else Set.ofList["+"])else (if (Set.contains ("0") (s1))then (if(Set.contains ("-") (s2)) then Set.ofList["-"]else Set.empty) else (if (Set.contains ("0") (s2))then Set.ofList["0"]else Set.ofList["+"])))
   
-let Minus (s1) (s2) = Set.ofList(["+"])
-let Pow2 (s1) (s2) = Set.ofList(["+"])
-let Times (s1) (s2) = Set.ofList(["+"])
-let Div (s1) (s2) = Set.ofList(["+"])
+let Minus (s2) (s1) : Set<string>= if (Set.contains ("-") (s1) ) 
+                                   then((if (Set.contains ("0") (s2))then Set.ofList["-"]else Set.ofList["-"]))
+                                   else (if (Set.contains ("+") (s1)) then (if (Set.contains ("-") (s2))then Set.ofList["-";"0";"+"] else Set.ofList["+"])else (if (Set.contains ("0") (s1))then (if(Set.contains ("-") (s2))then Set.ofList["-"]else (if (Set.contains ("0") (s2))then Set.ofList["0"]else Set.ofList["+"]))else Set.empty))
+                                                          
+let Times (s2) (s1) :Set<string> = if (Set.contains ("-") (s1) ) 
+                                   then ((if (Set.contains ("-") (s2))then Set.ofList["+"]else(if (Set.contains ("0") (s2)) then  Set.ofList["0"]else Set.ofList["-"])))
+                                   else (if (Set.contains ("+") (s1)) then (if (Set.contains ("-") (s2))then Set.ofList["-"] else (if (Set.contains ("0") (s2)) then  Set.ofList["0"]else Set.ofList["+"]))else (Set.ofList["0"]))
+let Div (s2) (s1) :Set<string> = if (Set.contains ("-")(s2))
+                                 then (if (Set.contains ("-") (s1)) then Set.ofList["+"] else (if (Set.contains ("0") (s1)) then  Set.ofList["0"]else Set.ofList["-"]))
+                                 else (if (Set.contains ("+") (s2)) then((if (Set.contains ("-") (s1)) then Set.ofList["-"] else (if (Set.contains ("0") (s1)) then  Set.ofList["0"]else Set.ofList["-"]))) else (Set.empty))
+                                
+let Pow2 (s2) (s1) :Set<string> =if (Set.contains ("-")(s2))
+                                 then (if (Set.contains ("-") (s1)) then Set.ofList["+";"-"] else (if (Set.contains ("0") (s1)) then  Set.ofList["0"]else Set.ofList["-"]))
+                                 else (if (Set.contains ("+") (s2)) then((if (Set.contains ("-") (s1)) then Set.ofList["+"] else (if (Set.contains ("0") (s1)) then  Set.ofList["0"]else Set.ofList["+"]))) else (if(Set.contains ("+") (s1)) then Set.ofList["0"] else Set.empty ))
 
-let Equal (s1) (s2) =true
-let NotEqual (s1) (s2) =true
-let GreaterThan (s1) (s2):bool = if (Set.contains ("-") (s1) ) 
+let Equal (s2) (s1) :bool=if (Set.contains ("-") (s1) ) 
+                          then((if (Set.contains ("-") s2) then true else false))
+                          else (if (Set.contains ("+") (s1))then (if (Set.contains ("+") (s2))then true else false)else (if (Set.contains ("0") (s1))then (if(Set.contains ("0") (s2))then true else false)else false)) 
+let NotEqual (s2) (s1) =true
+let GreaterThan (s2) (s1):bool = if (Set.contains ("-") (s1) ) 
                                  then(true)
-                                 else (if (Set.contains ("+") (s1))then (if (Set.contains ("+") (s2))then true else false)else (if (Set.contains ("0") (s1))then (if(Set.contains ("-") (s2))then false else true)else true)) 
-let LessThan (s1) (s2) = true
-let GEThan (s1) (s2) = true
-let LEThan (s1) (s2) =true
+                                 else (if (Set.contains ("+") (s1))then (if (Set.contains ("+") (s2))then true else false)else (if (Set.contains ("0") (s1))then (if(Set.contains ("+") (s2))then true else false)else false)) 
+let LessThan (s2) (s1):bool = if (Set.contains ("-") (s1) ) 
+                              then (if (Set.contains ("-") s2) then true else false)
+                              else (if (Set.contains ("+") (s1))then true else (if (Set.contains ("0") s1) then (if (Set.contains ("-") s2) then true else false ) else false)
+
+let GEThan (s2) (s1) :bool = if (Set.contains ("-") (s1)) 
+                             then true
+                             else (if (Set.contains ("+") (s1))then (if (Set.contains ("+") (s2))then true else false)else (if (Set.contains ("0") (s1))then (if(Set.contains ("-") (s2))then false else true)else true)) 
+let LEThan (s2) (s1) :bool =  if (Set.contains ("-") (s1) ) 
+                              then (if (Set.contains ("-") s2) then true else false)
+                              else (if (Set.contains ("+") (s1))then true else (if (Set.contains ("0") s1) then (if (Set.contains ("+") s2) then false else true ) else true))
 
 let rec UMinus (s1) result :Set<string>= 
     match s1 with 
@@ -247,8 +266,8 @@ let rec ApplyForAllElement (x) (a) absmemlist result=
     |x2::xlist-> let s = SignA (a) x2
                  let (map1,map2) = x2
                  let map1Update = (Map.add (x,s) map1)
-                 ApplyForAllElement x a xlist (result @ [(map1Update,map2)] @ xlist) 
-                
+                 //ApplyForAllElement x a xlist (result @ [(map1Update,map2)] @ xlist) 
+                 Set.ofList(result) //need to fix this
 
 
 
