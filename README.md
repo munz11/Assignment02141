@@ -1,5 +1,5 @@
 # Assignment02141
-**We are currently still working through some issues concerning array memory and the GC [] GC command. 
+**We are currently still working through some issues concerning updating arrays and some type matching.
 
 The overall goal of the assignment is to build a tool for running and analyzing programs written in a variant of the Guarded Command Language (GCL). 
 The language for all the files is F#
