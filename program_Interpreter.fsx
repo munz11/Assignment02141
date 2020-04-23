@@ -1,6 +1,4 @@
 // This script implements our interactive calculator
-
-// This script implements our interactive calculator
 // We need to import a couple of modules, including the generated lexer and parser
 #r "../../FsLexYacc.Runtime.7.0.6/lib/portable-net45+netcore45+wpa81+wp8+MonoAndroid10+MonoTouch10/FsLexYacc.Runtime.dll"
 open Microsoft.FSharp.Text.Lexing
@@ -41,16 +39,17 @@ let NotEqual (s2) (s1) =true
 let GreaterThan (s2) (s1):bool = if (Set.contains ("-") (s1) ) 
                                  then(true)
                                  else (if (Set.contains ("+") (s1))then (if (Set.contains ("+") (s2))then true else false)else (if (Set.contains ("0") (s1))then (if(Set.contains ("+") (s2))then true else false)else false)) 
-let LessThan (s2) (s1):bool = if (Set.contains ("-") (s1) ) 
-                              then (if (Set.contains ("-") s2) then true else false)
-                              else (if (Set.contains ("+") (s1))then true else (if (Set.contains ("0") s1) then (if (Set.contains ("-") s2) then true else false ) else false)
-
-let GEThan (s2) (s1) :bool = if (Set.contains ("-") (s1)) 
-                             then true
-                             else (if (Set.contains ("+") (s1))then (if (Set.contains ("+") (s2))then true else false)else (if (Set.contains ("0") (s1))then (if(Set.contains ("-") (s2))then false else true)else true)) 
-let LEThan (s2) (s1) :bool =  if (Set.contains ("-") (s1) ) 
-                              then (if (Set.contains ("-") s2) then true else false)
-                              else (if (Set.contains ("+") (s1))then true else (if (Set.contains ("0") s1) then (if (Set.contains ("+") s2) then false else true ) else true))
+let LessThan (s2) (s1):bool = if (Set.contains ("-") (s1)) then (if (Set.contains ("-") s2) then true else false)
+                              else (if (Set.contains ("+") (s1)) then true 
+                                    else (if (Set.contains ("0") s1) then (if (Set.contains ("-") s2) then true 
+                                                                           else false ) 
+                                          else false))
+let GEThan (s2) (s1) :bool = if (Set.contains ("-") (s1)) then true
+                             else (if (Set.contains ("+") (s1)) then (if (Set.contains ("+") (s2)) then true else false) 
+                                   else (if (Set.contains ("0") (s1)) then (if (Set.contains ("-") (s2)) then false else true) else true)) 
+let LEThan (s2) (s1) :bool =  if (Set.contains ("-") (s1)) then (if (Set.contains ("-") s2) then true else false)
+                              else (if (Set.contains ("+") (s1)) then true 
+                                    else (if (Set.contains ("0") s1) then (if (Set.contains ("+") s2) then false else true) else true))
 
 let rec UMinus (s1) result :Set<string>= 
     match s1 with 
@@ -58,9 +57,6 @@ let rec UMinus (s1) result :Set<string>=
     |x::xlist -> let element = (if (x = "-" ) then "+" else if (x = "+") then "-" else "0")
                  UMinus (xlist) (result@([element]@xlist))
     
-
-
-
 let rec SignA (a:AExp) absmemelement = 
     match a with 
     |Num(e1) ->Sign (e1)
@@ -78,12 +74,8 @@ let rec SignA (a:AExp) absmemelement =
                          if (Set.isEmpty(Set.intersect finalset (Set.ofList["0";"+"]))) 
                          then Set.empty
                          else Map.find (e1) map2
-                               
     |DivExpr(e1,e2) ->Div (SignA e1 absmemelement) (SignA e2 absmemelement)
-
-
-
-
+    
 let rec SignB (b:BExp) absmemelement =
     match b with
     | BitAndB(e1, e2) -> let lhs = (SignB e1 absmemelement)
@@ -103,8 +95,6 @@ let rec SignB (b:BExp) absmemelement =
     | LEThanB(e1, e2) ->  LEThan (SignA e1 absmemelement) (SignA e2 absmemelement)
     | WutT -> true
     | WutF -> false
-
-
 
 // We define the evaluation function recursively, by induction on the structure
 // of edges of the graph
@@ -188,11 +178,9 @@ let rec calA e mem =
                           match value1 with 
                           | Some a -> Some (- a)
                           |None ->None
-                          
     | ArrayExpr(e1, e2) -> let stringe1 = e1 + "[" + string (evalA e2) + "]"
                            let value1 = Map.tryFind stringe1 (mem: Map<string,int>)
                            value1
-                            
     | DivExpr(e1,e2) ->   let value1 = (calA e1 mem) 
                           let value2 = (calA e2 mem)
                           match value1 with 
@@ -200,7 +188,6 @@ let rec calA e mem =
                                       |Some a2 -> Some (a / a2)
                                       |None ->None
                           |None ->None
-
 
 let rec calB e mem =
     match e with
@@ -258,8 +245,6 @@ let rec calB e mem =
     | WutT -> true
     | WutF -> false
 
-
-
 let rec ApplyForAllElement (x) (a) absmemlist result= 
     match absmemlist  with 
     |[] ->(Set.ofList(result))
@@ -268,10 +253,6 @@ let rec ApplyForAllElement (x) (a) absmemlist result=
                  let map1Update = (Map.add (x,s) map1)
                  //ApplyForAllElement x a xlist (result @ [(map1Update,map2)] @ xlist) 
                  Set.ofList(result) //need to fix this
-
-
-
-
 
 let rec calLabel e absmem =
   match e with 
@@ -287,9 +268,6 @@ let rec SignBforAll (b) absmemlist  =
     |[] -> true
     |x2::xlist-> (SignB b x2) && (SignBforAll (b) xlist)
 
-
-
-
 let rec findnode xlist e absmem= // xlist is edges, e is node to find, and mem is memory 
     match xlist with 
     |[] -> None
@@ -298,8 +276,6 @@ let rec findnode xlist e absmem= // xlist is edges, e is node to find, and mem i
                                                      else findnode xs e absmem
     |(qstart,label,qend)::xs when qstart=e -> Some (qstart,label,qend)
     |(qstart,label,qend)::xs -> findnode xs e absmem
-
-
 
 let rec interpreter xlist e (absmem:Set<'a>) = // xlist is the list of edges, e is the current node, and mem is the memory
   match e with
@@ -333,21 +309,14 @@ let rec edgesC (qo: int) (e: CExp) (qe: int) (used) = //initially qe=1, qo=0, us
   |AssignC (e1,e2) -> ([(qo, MemUpdate((e1,e2)), qe)],used)
   |AssignArrayC (e1,e2,e3) -> ([(qo, MemUpdateArray((e1,e2,e3)), qe)],used)
   |SkipC -> ([(qo, SkipPG , qe)],used)
-  
-  
   |StateC (e1, e2) -> let lastq = subfunc(used)
                       let (e1list,used1) = edgesC (qo) (e1) (lastq+1) (used@[lastq+1]) 
                       let (e2list,used2) = edgesC (lastq+1) (e2) (qe) (used1)
                       (e1list@e2list,used2) 
-                      
-                      
   |IfStateC (gc1) -> let (E,used1,d) = edgesGC (qo) gc1 (qe) (used) (false)
                      (E,used1)
-
-
   |DoloopC (gc1) -> let (E,used1,d) = edgesGC (qo) gc1 (qo) (used) (false)
                     (E@[(qo, CheckBol(LogNotB(matchdtob(d))), qe)],used1)
-                    
                     
 and edgesGC (qo:int) (e: GCExp) (qe: int) (used) (d)= // d is bool 
     match e with
