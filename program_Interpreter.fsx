@@ -15,8 +15,10 @@ open Lexer
 
 let Sign (e1:int) = if (e1 > 0) then Set.ofList["+"]  else if (e1 < 0) then Set.ofList["-"] else Set.ofList["0"]
 
-let Plus (s1) (s2) = Set.ofList(["+"])
-
+let Plus (s1) (s2) : Set<string>= if (Set.contains ("-") (s1) ) 
+                                  then((if (Set.contains ("+") (s2)) then Set.ofList["-";"0";"+"] else Set.ofList["-"]))
+                                  else (if (Set.contains ("+") (s1)) then (if (Set.contains ("-") (s2))then Set.ofList["-";"0";"+"] else Set.ofList["+"])else (if (Set.contains ("0") (s1))then (if(Set.contains ("-") (s2)) then Set.ofList["-"]else Set.empty) else (if (Set.contains ("0") (s2))then Set.ofList["0"]else Set.ofList["+"])))
+  
 let Minus (s1) (s2) = Set.ofList(["+"])
 let Pow2 (s1) (s2) = Set.ofList(["+"])
 let Times (s1) (s2) = Set.ofList(["+"])
@@ -24,12 +26,14 @@ let Div (s1) (s2) = Set.ofList(["+"])
 
 let Equal (s1) (s2) =true
 let NotEqual (s1) (s2) =true
-let GreaterThan (s1) (s2) =true
+let GreaterThan (s1) (s2):bool = if (Set.contains ("-") (s1) ) 
+                                 then(true)
+                                 else (if (Set.contains ("+") (s1))then (if (Set.contains ("+") (s2))then true else false)else (if (Set.contains ("0") (s1))then (if(Set.contains ("-") (s2))then false else true)else true)) 
 let LessThan (s1) (s2) = true
 let GEThan (s1) (s2) = true
 let LEThan (s1) (s2) =true
 
-let rec UMinus (s1) result = 
+let rec UMinus (s1) result :Set<string>= 
     match s1 with 
     |[] -> Set.ofList(result)
     |x::xlist -> let element = (if (x = "-" ) then "+" else if (x = "+") then "-" else "0")
@@ -40,18 +44,23 @@ let rec UMinus (s1) result =
 
 let rec SignA (a:AExp) absmemelement = 
     match a with 
-    | Num(e1) ->Set.ofList([Sign (e1)])
-    | Xval(e1) ->let (map1,map2) = absmemelement 
-                 Map.find (e1) map1
-    | UPlusExpr(e1) ->SignA (e1) absmemelement
-    | PlusExpr(e1,e2) ->Plus (SignA e1 absmemelement) (SignA e2 absmemelement)
-    | MinusExpr(e1,e2) ->Minus (SignA e1 absmemelement) (SignA e2 absmemelement)
-    | PowExpr(e1,e2) ->Pow2 (SignA e1 absmemelement) (SignA e2 absmemelement)
-    | TimesExpr(e1,e2) ->Times (SignA e1 absmemelement) (SignA e2 absmemelement)
-    | UMinusExpr(e1) ->let s = SignA e1 absmemelement
-                       UMinus (s) []
-    | ArrayExpr(e1, e2) ->Set.ofList(["0"])
-    | DivExpr(e1,e2) ->Div (SignA e1 absmemelement) (SignA e2 absmemelement)
+    |Num(e1) ->Sign (e1)
+    |Xval(e1) ->let (map1,map2) = absmemelement 
+                Map.find (e1) map1
+    |UPlusExpr(e1) ->SignA (e1) absmemelement
+    |PlusExpr(e1,e2) ->Plus (SignA e1 absmemelement) (SignA e2 absmemelement)
+    |MinusExpr(e1,e2) ->Minus (SignA e1 absmemelement) (SignA e2 absmemelement)
+    |PowExpr(e1,e2) ->Pow2 (SignA e1 absmemelement) (SignA e2 absmemelement)
+    |TimesExpr(e1,e2) ->Times (SignA e1 absmemelement) (SignA e2 absmemelement)
+    |UMinusExpr(e1) ->let s = SignA e1 absmemelement
+                      UMinus (Set.toList(s)) []
+    |ArrayExpr(e1, e2) ->let finalset = SignA (e2) absmemelement 
+                         let (_,map2) = absmemelement
+                         if (Set.isEmpty(Set.intersect finalset (Set.ofList["0";"+"]))) 
+                         then Set.empty
+                         else Map.find (e1) map2
+                               
+    |DivExpr(e1,e2) ->Div (SignA e1 absmemelement) (SignA e2 absmemelement)
 
 
 
@@ -232,24 +241,25 @@ let rec calB e mem =
 
 
 
-let rec ApplyForAllElement (x) (a) absmemlist result = 
+let rec ApplyForAllElement (x) (a) absmemlist result= 
     match absmemlist  with 
-    |[] ->Some (Set.ofList(result))
+    |[] ->(Set.ofList(result))
     |x2::xlist-> let s = SignA (a) x2
                  let (map1,map2) = x2
                  let map1Update = (Map.add (x,s) map1)
-                 //ApplyForAllElement (x) (a) (xlist) (result@[(map1Update,map2)]@xlist) gives weird comparison errors
-                 Some (Set.ofList(absmemlist)) // we neeed to fix this
+                 ApplyForAllElement x a xlist (result @ [(map1Update,map2)] @ xlist) 
                 
+
+
 
 
 
 let rec calLabel e absmem =
   match e with 
-  |MemUpdate ( (e1,e2)) -> ApplyForAllElement (e1) (e2) (Set.toList(absmem)) ([])
+  |MemUpdate ( (e1,e2)) -> Some (ApplyForAllElement (e1) (e2) (Set.toList(absmem)) ([]))
   |SkipPG -> Some absmem
   |CheckBol(b)-> Some (Set.filter(fun x -> SignB (b) x) absmem) 
-  |MemUpdateArray ( (e1,e2,e3)) -> Some absmem // will fix this some day       
+  |MemUpdateArray ((e1,e2,e3)) -> Some absmem // don't know how to update arrays
                     
 // We need a function which takes the edges and recursively runs the calLabel on each label until the end node is reached
 
@@ -339,7 +349,7 @@ let parse input =
     res
 // The response from the requests made on this website
 // will contain system output from e.g. printfn
-let absmem = Set.ofList([((Map.ofList[("z",Set.ofList["0"]);("y",Set.ofList["+"]);("x",Set.ofList["-"])]),(Map.ofList[("A",["0","+","-"])]))])
+let absmem = Set.ofList([((Map.ofList[("z",Set.ofList["0"]);("y",Set.ofList["+"]);("x",Set.ofList["-"])]),(Map.ofList[("A",Set.ofList["0","+","-"])]))])
 let strings = [|
     ("if x >= y -> z:=x [] y > x -> z:=y fi","AssignC(a,NUM 10)")
     //these are straight from the fm4fun website
