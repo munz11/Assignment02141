@@ -245,16 +245,17 @@ let rec calB e mem =
     | WutT -> true
     | WutF -> false
 
-let rec ApplyForAllElement (x) (a) absmemlist result= 
+let rec ApplyForAllElement (x:VarX) (a:AExp) absmemlist result= 
     match absmemlist  with 
     |[] ->(Set.ofList(result))
     |x2::xlist-> let s = SignA (a) x2
                  let (map1,map2) = x2
-                 let map1Update = (Map.add (x,s) map1)
-                 //ApplyForAllElement x a xlist (result @ [(map1Update,map2)] @ xlist) 
-                 Set.ofList(result) //need to fix this
+                 let map1Update:(Map<'a,Set<string>>) = (Map.add (x) (s) map1)
+                 let newelement: (List<(Map<'a,Set<string>> * Map<'a,Set<string>>)>)= [(map1Update,map2)]
+                 let updatedresult = (result @ newelement)
+                 ApplyForAllElement x a xlist updatedresult 
 
-let rec calLabel e absmem =
+let rec calLabel e (absmem:Set<(Map<TypesAST.VarX,Set<string>> * Map<TypesAST.VarX,Set<string>>)>) =
   match e with 
   |MemUpdate ( (e1,e2)) -> Some (ApplyForAllElement (e1) (e2) (Set.toList(absmem)) ([]))
   |SkipPG -> Some absmem
